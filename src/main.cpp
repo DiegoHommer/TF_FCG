@@ -76,6 +76,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+// Funções auxiliares
+void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -130,6 +133,10 @@ bool left = false;
 bool right = false;
 bool dash = false;
 bool jump = false;
+
+// Variável para alternar entre câmera livre e câmera look_at
+bool look_at = false;
+bool switch_camera_type = true;
 
 int main()
 {
@@ -228,12 +235,13 @@ int main()
     glm::mat4 the_view;
 
     glm::vec4 camera_position_c = glm::vec4(2.0f, 8.0f, 2.0f, 1.0f); // Ponto "c", centro da câmera inicializado em um ponto definido
+    glm::vec4 camera_lookat_l = glm::vec4(2.0f, 8.0f, 2.0f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
     // Variáveis para calcular delta_t inicializadas
     float old_seconds = (float)glfwGetTime();
-    float delta_t;
+    float delta_t = 0.0f;
 
     // Ficamos em um loop infinito, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -261,20 +269,11 @@ int main()
         // comentários detalhados dentro da definição de BuildTriangles().
         glBindVertexArray(vertex_array_object_id);
 
-        // Computamos a posição da câmera utilizando coordenadas esféricas.  As
-        // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
-        // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
-        // e ScrollCallback().
-        float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
-
         // Recuperamos o número de segundos que passou desde o último frame
         delta_t = (float)glfwGetTime() - old_seconds;
 
         // Vamos desenhar 3 instâncias (cópias) do cubo
-        for (int i = 1; i <= 1; ++i)
+        for (int i = 1; i <= 2; ++i)
         {
             // Cada cópia do cubo possui uma matriz de modelagem independente,
             // já que cada cópia estará em uma posição (rotação, escala, ...)
@@ -291,6 +290,14 @@ int main()
                 // (Model Coordinates).
                 model = Matrix_Identity();
                 model *= Matrix_Scale(5.0f, 5.0f, 5.0f); // PRIMEIRO escala
+            }
+            else if (i == 2) {
+                if (look_at) {
+                    // Modelo do personagem
+                    model = Matrix_Identity();
+                    model *= Matrix_Scale(1.0f, 2.0f, 1.0f); // PRIMEIRO escala
+                    model *= Matrix_Translate(camera_lookat_l.x, camera_lookat_l.y - 1.0f, camera_lookat_l.z);
+                }
             }
 
             // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
@@ -331,63 +338,7 @@ int main()
             );
         }
 
-        // Abaixo definimos as funções de movimento da câmera livre para cada umas das 4 direções possíveis
-        float velocity = 2.0f;
-        float gravity = 3.0f;
-        glm::vec4 new_position = camera_position_c;
-
-        if (dash) {
-            velocity *= 1000.0f;
-            dash = false;
-        }
-
-        if (front) {
-            glm::vec4 w = camera_view_vector;
-            w = w / norm(w);
-			new_position.x += (w.x * velocity * delta_t);
-			new_position.z += (w.z * velocity * delta_t);
-        }
-
-        if (back) {
-            glm::vec4 w = -camera_view_vector;
-            w = w / norm(w);
-			new_position.x += (w.x * velocity * delta_t);
-			new_position.z += (w.z * velocity * delta_t);
-        }
-
-        if (left) {
-            glm::vec4 u = crossproduct(camera_up_vector, camera_view_vector);
-            u = u / norm(u);
-			new_position.x += (u.x * velocity * delta_t);
-			new_position.z += (u.z * velocity * delta_t);
-        }
-
-        if (right) {
-            glm::vec4 u = crossproduct(camera_up_vector, -camera_view_vector);
-            u = u / norm(u);
-			new_position.x += (u.x * velocity * delta_t);
-			new_position.z += (u.z * velocity * delta_t);
-        }
-
-		bool inX = (new_position.x >= -2.5) && (new_position.x <= 2.5);
-        bool inY = (camera_position_c.y >= -2.5) && (camera_position_c.y <= 2.5);
-		bool inYGravity = (new_position.y - (gravity * delta_t) - 0.5f >= -2.5) && (new_position.y - (gravity * delta_t) - 0.5f <= 2.5);
-		bool inZ = (new_position.z >= -2.5) && (new_position.z <= 2.5);
-
-        if (!inX || !inY || !inZ) {
-            camera_position_c.x = new_position.x;
-            camera_position_c.z = new_position.z;
-        }
-
-        if (!inX || !inYGravity || !inZ){
-            camera_position_c.y = new_position.y - (gravity * delta_t);
-         }
-       
-
-        // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-        // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        camera_view_vector = glm::vec4(x, y, z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        CameraMovement(look_at, &camera_lookat_l, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);      
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
@@ -440,6 +391,111 @@ int main()
     glfwTerminate();
 
     return 0;
+}
+
+void CameraMovement(bool look_at, glm::vec4 *camera_lookat_l, glm::vec4 *camera_position_c, glm::vec4 *camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
+    // Computamos a posição da câmera utilizando coordenadas esféricas.  As
+    // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
+    // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
+    // e ScrollCallback().
+    float r = g_CameraDistance;
+    float y = r * sin(g_CameraPhi);
+    float z = r * cos(g_CameraPhi) * cos(g_CameraTheta);
+    float x = r * cos(g_CameraPhi) * sin(g_CameraTheta);
+
+    // Atualizamos os vetores da câmera quando seu tipo muda
+    if (switch_camera_type) {
+        if (look_at) {
+            // Quando trocou de câmera livre para câmera look_at
+            (*camera_lookat_l) = (*camera_position_c);
+            (*camera_position_c) = glm::vec4(x, y, z, 1.0f) + glm::vec4(0.0f, 4.0f, 2.0f, 0.0f);
+            (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
+        }
+        else
+        {
+            // Quando trocou de câmera look_at para câmera livre
+            (*camera_position_c) = (*camera_lookat_l);
+            (*camera_view_vector) = glm::vec4(x, y, z, 0.0f);
+        }
+        switch_camera_type = false;
+    }
+
+    // Abaixo definimos as funções de movimento da câmera livre para cada umas das 4 direções possíveis
+    float velocity = 2.0f;
+    float gravity = 3.0f;
+    glm::vec4 new_position;
+
+    if (look_at) {
+        new_position = (*camera_lookat_l);
+        (*camera_position_c) = glm::vec4(x, y, z, 1.0f) + glm::vec4(2.0f, 4.0f, 0.0f, 0.0f);
+        (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
+    }else {
+        new_position = (*camera_position_c);
+        (*camera_view_vector) = glm::vec4(x, y, z, 0.0f);
+    }
+
+    if (dash) {
+        velocity *= 1000.0f;
+        dash = false;
+    }
+
+    if (front) {
+        glm::vec4 w = (*camera_view_vector);
+        w = w / norm(w);
+        new_position.x += (w.x * velocity * delta_t);
+        new_position.z += (w.z * velocity * delta_t);
+    }
+
+    if (back) {
+        glm::vec4 w = -(*camera_view_vector);
+        w = w / norm(w);
+        new_position.x += (w.x * velocity * delta_t);
+        new_position.z += (w.z * velocity * delta_t);
+    }
+
+    if (left) {
+        glm::vec4 u = crossproduct(camera_up_vector, (*camera_view_vector));
+        u = u / norm(u);
+        new_position.x += (u.x * velocity * delta_t);
+        new_position.z += (u.z * velocity * delta_t);
+    }
+
+    if (right) {
+        glm::vec4 u = crossproduct(camera_up_vector, -(*camera_view_vector));
+        u = u / norm(u);
+        new_position.x += (u.x * velocity * delta_t);
+        new_position.z += (u.z * velocity * delta_t);
+    }
+
+
+    bool inX = (new_position.x >= -2.5) && (new_position.x <= 2.5);
+    bool inY = look_at ? (camera_lookat_l->y >= -2.5) && (camera_lookat_l->y <= 2.5)
+        : (camera_position_c->y >= -2.5) && (camera_position_c->y <= 2.5);
+    bool inYGravity = (new_position.y - (gravity * delta_t) - 0.5f >= -2.5) &&
+        (new_position.y - (gravity * delta_t) - 0.5f <= 2.5);
+    bool inZ = (new_position.z >= -2.5) && (new_position.z <= 2.5);
+
+    if (look_at) {
+        if (!inX || !inY || !inZ) {
+            camera_lookat_l->x = new_position.x;
+            camera_lookat_l->z = new_position.z;
+        }
+
+        if (!inX || !inYGravity || !inZ) {
+            camera_lookat_l->y = new_position.y - (gravity * delta_t);
+        }
+    }
+    else {
+        if (!inX || !inY || !inZ) {
+            camera_position_c->x = new_position.x;
+            camera_position_c->z = new_position.z;
+        }
+
+        if (!inX || !inYGravity || !inZ) {
+            camera_position_c->y = new_position.y - (gravity * delta_t);
+        }
+    }
+
 }
 
 // Constrói triângulos para futura renderização
@@ -900,8 +956,13 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     float dy = ypos - g_LastCursorPosY;
 
     // Atualizamos parâmetros da câmera com os deslocamentos
-    g_CameraTheta -= 0.01f*dx;
-    g_CameraPhi   -= 0.01f*dy;
+    if (look_at) {
+        g_CameraTheta -= 0.01f * dx;
+        g_CameraPhi += 0.01f * dy;
+    }else {
+        g_CameraTheta -= 0.01f * dx;
+        g_CameraPhi -= 0.01f * dy;
+    }
 
     // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
     float phimax = 3.141592f/2;
@@ -1007,6 +1068,14 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         if (action == GLFW_PRESS) {
             // Space pressionado
             jump = true;
+        }
+    }
+
+    if (key == GLFW_KEY_L) {
+        if (action == GLFW_PRESS) {
+            // L pressionado
+            look_at = !look_at;
+            switch_camera_type = true;
         }
     }
 
