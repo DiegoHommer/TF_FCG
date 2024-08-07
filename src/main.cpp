@@ -528,7 +528,7 @@ void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_
         if (look_at) {
             // Quando trocou de câmera livre para câmera look_at
             (*camera_lookat_l) = (*camera_position_c);
-            (*camera_position_c) = glm::vec4(x, y, z, 1.0f) + glm::vec4(0.0f, 5.0f, 2.0f, 0.0f);
+            (*camera_position_c) = glm::vec4(x, y, z, 0.0f) + (*camera_lookat_l);
             (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
         }
         else
@@ -547,7 +547,7 @@ void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_
 
     if (look_at) {
         new_position = (*camera_lookat_l);
-        (*camera_position_c) = glm::vec4(x, y, z, 1.0f) + glm::vec4(2.0f, 4.0f, 0.0f, 0.0f);
+        (*camera_position_c) = glm::vec4(x, y, z, 0.0f) + new_position;
         (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
     }
     else {
@@ -1015,15 +1015,15 @@ GLuint BuildTriangles()
 
     GLuint indices[] = {
         // Definição dos índices para renderizar o cubo
-        0, 1, 2, // triângulo 1 
-        7, 6, 5, // triângulo 2 
-        3, 2, 6, // triângulo 3 
-        4, 0, 3, // triângulo 4 
-        4, 5, 1, // triângulo 5 
-        1, 5, 6, // triângulo 6 
-        0, 2, 3, // triângulo 7 
-        7, 5, 4, // triângulo 8 
-        3, 6, 7, // triângulo 9 
+        0, 1, 2, // triângulo 1
+        7, 6, 5, // triângulo 2
+        3, 2, 6, // triângulo 3
+        4, 0, 3, // triângulo 4
+        4, 5, 1, // triângulo 5
+        1, 5, 6, // triângulo 6
+        0, 2, 3, // triângulo 7
+        7, 5, 4, // triângulo 8
+        3, 6, 7, // triângulo 9
         4, 3, 7, // triângulo 10
         4, 1, 0, // triângulo 11
         1, 6, 2, // triângulo 12
