@@ -21,6 +21,7 @@ uniform mat4 projection;
 // Identificador que define qual objeto está sendo desenhado no momento
 #define CUBE 0
 #define COW 1
+#define BUNNY 2
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -68,7 +69,7 @@ void main()
     float U = 0.0;
     float V = 0.0;
 
-    if ( object_id == CUBE )
+    if ( object_id == CUBE)
     {
         // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
         // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
@@ -98,7 +99,7 @@ void main()
         U = (tetha + M_PI) / (2*M_PI);
         V = (phi + M_PI_2) / M_PI;
     }
-    else if ( object_id == COW )
+    else if ( object_id == COW || object_id == BUNNY )
     {
         // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
         // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
@@ -121,24 +122,27 @@ void main()
         U = (position_model.x - minx) / (maxx - minx);
         V = (position_model.y - miny) / (maxy - miny);
     }
-    else if ( object_id == CUBE )
+    else if ( object_id == BUNNY )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         U = texcoords.x;
         V = texcoords.y;
     }
-    vec3 Kd0, Kd1;
+    vec3 Kd0, Kd1, Ks, Ka, q;
 
     // Aqui fazemos um if para decidir qual textura é atribuída para cada objeto
     if( object_id == COW ) {
         Kd0 = texture(TextureImage3, vec2(U,V)).rgb;
         Kd1 = vec3(0.0, 0.0, 0.0);
-    }else{
+    }else if(object_id == CUBE){
         // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
         Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
 
         // Obtemos a refletância difusa a partir da leitura da imagem TextureImage1
         Kd1 = texture(TextureImage1, vec2(U,V)).rgb;
+    }else {
+        Kd0 = texture(TextureImage2, vec2(U,V)).rgb;
+        Kd1 = vec3(0.0, 0.0, 0.0);
     }
 
     // Equação de Iluminação

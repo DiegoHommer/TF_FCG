@@ -314,6 +314,10 @@ int main()
     ComputeNormals(&cowmodel);
     BuildTrianglesAndAddToVirtualScene(&cowmodel);
 
+    ObjModel bunnymodel("../../data/bunny.obj");
+    ComputeNormals(&bunnymodel);
+    BuildTrianglesAndAddToVirtualScene(&bunnymodel);
+
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
 
@@ -501,6 +505,16 @@ int main()
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, COW);
         DrawVirtualObject("the_cow");
+
+        #define BUNNY 2
+
+        // Desenhamos o modelo do coelho
+        model = Matrix_Scale(0.5f,0.5f,0.5f) *
+            Matrix_Translate(2.0f, 8.0f, 0.0f)
+            * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, BUNNY);
+        DrawVirtualObject("the_bunny");
 
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
