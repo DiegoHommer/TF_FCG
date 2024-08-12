@@ -43,9 +43,13 @@
 #include <tiny_obj_loader.h>
 #include <stb_image.h>
 
+#define M_PI   3.14159265358979323846
+#define VELOCITY 2
+#define GRAVITY -3.0
+
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
-#include "matrices.h"
+#include "collisions.h"
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -152,7 +156,8 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 // Funções auxiliares
-void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
+void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
+void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -224,11 +229,17 @@ bool back = false;
 bool left = false;
 bool right = false;
 bool dash = false;
-bool jump = false;
+
+Character Madeline;
+
+Box plane;
+Box wall;
+Box ground;
+Box cube;
 
 // Variável para alternar entre câmera livre e câmera look_at
 bool look_at = false;
-bool switch_camera_type = true;
+bool switch_camera_type = false;
 
 int main()
 {
@@ -318,6 +329,10 @@ int main()
     ComputeNormals(&bunnymodel);
     BuildTrianglesAndAddToVirtualScene(&bunnymodel);
 
+    ObjModel planemodel("../../data/plane.obj");
+    ComputeNormals(&planemodel);
+    BuildTrianglesAndAddToVirtualScene(&planemodel);
+
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
 
@@ -341,10 +356,37 @@ int main()
     glm::mat4 the_model;
     glm::mat4 the_view;
 
-    glm::vec4 camera_position_c = glm::vec4(2.0f, 8.0f, 2.0f, 1.0f); // Ponto "c", centro da câmera inicializado em um ponto definido
-    glm::vec4 camera_lookat_l = glm::vec4(2.0f, 8.0f, 2.0f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+    glm::vec4 camera_position_c = glm::vec4(1.0f, 8.0f, 1.0f, 1.0f); // Ponto "c", centro da câmera inicializado em um ponto definido
+    Madeline.position = camera_position_c; // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+
+    Box madeline_collision;
+    madeline_collision.position = Madeline.position;
+    madeline_collision.height = 0.5;
+    madeline_collision.width = 0.5;
+    madeline_collision.length = 0.5;
+
+    plane.position = glm::vec4 (0.0f,2.5f,0.0f,1.0f);
+    plane.height = 0;
+    plane.width = 2.5;
+    plane.length = 2.5;
+
+    ground.position = glm::vec4 (0.0f,-6.0f,0.0f,1.0f);
+    ground.height = 0;
+    ground.width = 0;
+    ground.length = 0;
+
+    wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
+    wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
+    wall.height = 2.5;
+    wall.width = 0;
+    wall.length = 2.5;
+
+    cube.position = glm::vec4 (1.0f, 6.0f, 2.0f, 1.0f);
+    cube.height = 0.25;
+    cube.width = 1.00;
+    cube.length = 0.25;
 
     // Variáveis para calcular delta_t inicializadas
     float old_seconds = (float)glfwGetTime();
@@ -379,8 +421,13 @@ int main()
         // Recuperamos o número de segundos que passou desde o último frame
         delta_t = (float)glfwGetTime() - old_seconds;
 
-        // Vamos desenhar 3 instâncias (cópias) do cubo
-        for (int i = 1; i <= 2; ++i)
+        #define CUBE 0
+        #define COW 1
+        #define BUNNY 2
+        #define PLANE  3
+
+        // Vamos desenhar 2 instâncias (cópias) do cubo
+        for (int i = 1; i<= 2; i++)
         {
             // Cada cópia do cubo possui uma matriz de modelagem independente,
             // já que cada cópia estará em uma posição (rotação, escala, ...)
@@ -396,14 +443,15 @@ int main()
                 // *exatamente iguais* a suas coordenadas no espaço do modelo
                 // (Model Coordinates).
                 model = Matrix_Identity();
-                model *= Matrix_Scale(5.0f, 5.0f, 5.0f); // PRIMEIRO escala
+                model *= Matrix_Translate(1.0f, 6.0f, 2.0f);
+                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
             }
             else if (i == 2) {
                 if (look_at) {
                     // Modelo do personagem
                     model = Matrix_Identity();
                     model *= Matrix_Scale(1.0f, 1.0f, 1.0f); // PRIMEIRO escala
-                    model *= Matrix_Translate(camera_lookat_l.x, camera_lookat_l.y, camera_lookat_l.z);
+                    model *= Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
                 }
             }
 
@@ -423,8 +471,6 @@ int main()
             // Veja a definição de g_VirtualScene["cube_faces"] dentro da
             // função BuildTriangles(), e veja a documentação da função
             // glDrawElements() em http://docs.gl/gl3/glDrawElements.
-
-            #define CUBE 0
 
             glUniform1i(g_object_id_uniform, CUBE);
             glDrawElements(
@@ -449,7 +495,8 @@ int main()
             );
         }
 
-        CameraMovement(look_at, &camera_lookat_l, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
+        CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
+        CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
@@ -470,7 +517,7 @@ int main()
         {
             // Projeção Perspectiva.
             // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
-            float field_of_view = 3.141592 / 3.0f;
+            float field_of_view = M_PI / 3.0f;
             projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
         }
         else
@@ -495,8 +542,6 @@ int main()
         glUniformMatrix4fv(g_view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 
-        #define COW 1
-
         // Desenhamos o modelo da vaca
         model = Matrix_Translate(0.0f, 4.0f, 0.0f)
             * Matrix_Rotate_Z(0.6f)
@@ -506,15 +551,28 @@ int main()
         glUniform1i(g_object_id_uniform, COW);
         DrawVirtualObject("the_cow");
 
-        #define BUNNY 2
-
         // Desenhamos o modelo do coelho
-        model = Matrix_Scale(0.5f,0.5f,0.5f) *
-            Matrix_Translate(2.0f, 8.0f, 0.0f)
-            * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
+        model = Matrix_Translate(1.0f, 4.0f, 0.0f) *
+            Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f) *
+            Matrix_Scale(0.5f,0.5f,0.5f);
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, BUNNY);
         DrawVirtualObject("the_bunny");
+
+        // Desenhamos o plano do chão
+        model = Matrix_Scale(2.5f,1.0f,2.5f)*
+        Matrix_Translate(0.0f,2.5f,0.0f);
+        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, PLANE);
+        DrawVirtualObject("the_plane");
+
+        // Desenhamos o plano da parede
+        model = Matrix_Translate(2.5f,5.0f,0.0f) *
+        Matrix_Rotate_Z(M_PI/2) *
+        Matrix_Scale(2.5f,1.0f,2.5f);
+        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, PLANE);
+        DrawVirtualObject("the_plane");
 
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
@@ -525,9 +583,27 @@ int main()
     glfwTerminate();
 
     return 0;
+    return 0;
 }
 
-void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
+void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
+
+    // Atualizamos os vetores da câmera quando seu tipo muda
+    if (switch_camera_type) {
+        if (look_at) {
+            // Quando trocou de câmera livre para câmera look_at
+            character->position = *camera_position_c;
+        }
+        else
+        {
+            // Quando trocou de câmera look_at para câmera livre
+            *camera_position_c = character->position;
+        }
+        g_CameraTheta += M_PI;
+        g_CameraPhi = -g_CameraPhi;
+        switch_camera_type = false;
+    }
+
     // Computamos a posição da câmera utilizando coordenadas esféricas.  As
     // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
     // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
@@ -537,100 +613,85 @@ void CameraMovement(bool look_at, glm::vec4* camera_lookat_l, glm::vec4* camera_
     float z = r * cos(g_CameraPhi) * cos(g_CameraTheta);
     float x = r * cos(g_CameraPhi) * sin(g_CameraTheta);
 
-    // Atualizamos os vetores da câmera quando seu tipo muda
-    if (switch_camera_type) {
-        if (look_at) {
-            // Quando trocou de câmera livre para câmera look_at
-            (*camera_lookat_l) = (*camera_position_c);
-            (*camera_position_c) = glm::vec4(x, y, z, 0.0f) + (*camera_lookat_l);
-            (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
-        }
-        else
-        {
-            // Quando trocou de câmera look_at para câmera livre
-            (*camera_position_c) = (*camera_lookat_l);
-            (*camera_view_vector) = glm::vec4(x, y, z, 0.0f);
-        }
-        switch_camera_type = false;
-    }
-
-    // Abaixo definimos as funções de movimento da câmera livre para cada umas das 4 direções possíveis
-    float velocity = 2.0f;
-    float gravity = 3.0f;
-    glm::vec4 new_position;
-
     if (look_at) {
-        new_position = (*camera_lookat_l);
-        (*camera_position_c) = glm::vec4(x, y, z, 0.0f) + new_position;
-        (*camera_view_vector) = (*camera_lookat_l) - (*camera_position_c);
+        (*camera_position_c) = character->position + glm::vec4(x, y, z, 0.0f);
+        (*camera_view_vector) = character->position - *camera_position_c;
     }
     else {
-        new_position = (*camera_position_c);
         (*camera_view_vector) = glm::vec4(x, y, z, 0.0f);
     }
 
-    if (dash) {
-        velocity *= 1000.0f;
-        dash = false;
-    }
+}
+
+void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
+
+    character->direction = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
 
     if (front) {
         glm::vec4 w = (*camera_view_vector);
+        w.y = 0;
         w = w / norm(w);
-        new_position.x += (w.x * velocity * delta_t);
-        new_position.z += (w.z * velocity * delta_t);
+        character->direction += w;
     }
 
     if (back) {
         glm::vec4 w = -(*camera_view_vector);
+        w.y = 0;
         w = w / norm(w);
-        new_position.x += (w.x * velocity * delta_t);
-        new_position.z += (w.z * velocity * delta_t);
+        character->direction += w;
     }
 
     if (left) {
         glm::vec4 u = crossproduct(camera_up_vector, (*camera_view_vector));
+        u.y = 0;
         u = u / norm(u);
-        new_position.x += (u.x * velocity * delta_t);
-        new_position.z += (u.z * velocity * delta_t);
+        character->direction += u;
     }
 
     if (right) {
         glm::vec4 u = crossproduct(camera_up_vector, -(*camera_view_vector));
+        u.y = 0;
         u = u / norm(u);
-        new_position.x += (u.x * velocity * delta_t);
-        new_position.z += (u.z * velocity * delta_t);
+        character->direction += u;
     }
 
-
-    bool inX = (new_position.x >= -2.5) && (new_position.x <= 2.5);
-    bool inY = look_at ? (camera_lookat_l->y >= -2.5) && (camera_lookat_l->y <= 2.5)
-        : (camera_position_c->y >= -2.5) && (camera_position_c->y <= 2.5);
-    bool inYGravity = (new_position.y - (gravity * delta_t) - 0.5f >= -2.5) &&
-        (new_position.y - (gravity * delta_t) - 0.5f <= 2.5);
-    bool inZ = (new_position.z >= -2.5) && (new_position.z <= 2.5);
-
-    if (look_at) {
-        if (!inX || !inY || !inZ) {
-            camera_lookat_l->x = new_position.x;
-            camera_lookat_l->z = new_position.z;
-        }
-
-        if (!inX || !inYGravity || !inZ) {
-            camera_lookat_l->y = new_position.y - (gravity * delta_t);
-        }
+    if (dash){
+        character->dash = 20;
+        character->gravity = 0;
+        character->velocity = 10;
+        character->direction_dash = character->direction;
+        character->direction_dash.y = 0;
+        if (character->direction_dash == glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f))
+            character->direction_dash = (*camera_view_vector)/norm(*camera_view_vector);
+        dash = false;
+    }
+    else if (character->dash) {
+        character->dash -= 1;
+        character->direction = character->direction_dash;
     }
     else {
-        if (!inX || !inY || !inZ) {
-            camera_position_c->x = new_position.x;
-            camera_position_c->z = new_position.z;
-        }
+        character->velocity = 2;
 
-        if (!inX || !inYGravity || !inZ) {
-            camera_position_c->y = new_position.y - (gravity * delta_t);
-        }
+        if (character->gravity > GRAVITY)
+            character->gravity -= 0.1;
     }
 
+    character_collision->position = character->position;
+
+    character->direction = character->direction * character->velocity * delta_t;
+    character->direction.y = character->gravity  * delta_t;
+
+    if (PointPlaneCollision(character->position, character->position+character->direction, ground))
+        character->position = glm::vec4 (2.0f, 4.0f, 2.0f, 1.0f);
+
+    character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
+    character->direction = CubePlaneCollision(*character_collision, character->direction, wall);
+    character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
+    character->position += character->direction;
+
+    if (!look_at){
+        *camera_position_c = character->position;
+    }
 }
 
 // Função que carrega uma imagem para ser utilizada como textura
@@ -818,6 +879,7 @@ void ComputeNormals(ObjModel* model)
             glm::vec4  vertices[3];
             for (size_t vertex = 0; vertex < 3; ++vertex)
             {
+
                 tinyobj::index_t idx = model->shapes[shape].mesh.indices[3 * triangle + vertex];
                 const float vx = model->attrib.vertices[3 * idx.vertex_index + 0];
                 const float vy = model->attrib.vertices[3 * idx.vertex_index + 1];
@@ -1362,6 +1424,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Não modifique este loop! Ele é utilizando para correção automatizada dos
     // laboratórios. Deve ser sempre o primeiro comando desta função KeyCallback().
     for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 10; ++i)
         if (key == GLFW_KEY_0 + i && action == GLFW_PRESS && mod == GLFW_MOD_SHIFT)
             std::exit(100 + i);
     // ====================
@@ -1415,16 +1478,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     }
 
     if (key == GLFW_KEY_C) {
-        if (action == GLFW_PRESS) {
+        if (action == GLFW_PRESS && Madeline.dash == 0) {
             // C pressionado
             dash = true;
         }
     }
 
     if (key == GLFW_KEY_SPACE) {
-        if (action == GLFW_PRESS) {
+        if (action == GLFW_PRESS ) {
             // Space pressionado
-            jump = true;
+            Madeline.gravity = 3;
         }
     }
 
