@@ -23,6 +23,7 @@ uniform mat4 projection;
 #define COW 1
 #define BUNNY 2
 #define PLANE 3
+#define MADELINE  4
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -112,7 +113,7 @@ void main()
 
     // Texture coordinates calculation
     vec2 texCoords;
-    if (object_id == CUBE || object_id == PLANE) {
+    if (object_id == CUBE || object_id == PLANE || object_id == MADELINE) {
         texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == COW || object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
@@ -123,7 +124,7 @@ void main()
     // Mapeamento de textura e propriedades do objeto
     vec3 Kd0, Kd1, Ka, Ks;
     float q;
-    if (object_id == COW) {
+    if (object_id == COW || object_id == MADELINE) {
         Kd0 = texture(TextureImage3, texCoords).rgb;
         Kd1 = vec3(0.0, 0.0, 0.0);
         Ks = vec3(0.0, 0.0, 0.0);

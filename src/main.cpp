@@ -45,7 +45,7 @@
 
 #define M_PI   3.14159265358979323846
 #define VELOCITY 2
-#define GRAVITY -3.0
+#define GRAVITY -4.0
 
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
@@ -333,8 +333,13 @@ int main()
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
+    ObjModel madelinemodel("../../data/madeline.obj");
+    ComputeNormals(&madelinemodel);
+    BuildTrianglesAndAddToVirtualScene(&madelinemodel);
+
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
+
 
     // Inicializamos o código para renderização de texto.
     TextRendering_Init();
@@ -425,6 +430,7 @@ int main()
         #define COW 1
         #define BUNNY 2
         #define PLANE  3
+        #define MADELINE  4
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
         for (int i = 1; i<= 2; i++)
@@ -574,6 +580,12 @@ int main()
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
 
+//        model = Matrix_Scale(1.0f, 1.0f, 1.0f)*
+//       Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
+//        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+//        glUniform1i(g_object_id_uniform, MADELINE);
+//       DrawVirtualObject("madeline");
+
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
         glfwSwapBuffers(window);
@@ -656,24 +668,24 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     }
 
     if (dash){
-        character->dash = 20;
+        character->dash = 4;
         character->gravity = 0;
-        character->velocity = 10;
+        character->velocity = 15;
         character->direction_dash = character->direction;
         character->direction_dash.y = 0;
         if (character->direction_dash == glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f))
             character->direction_dash = (*camera_view_vector)/norm(*camera_view_vector);
         dash = false;
     }
-    else if (character->dash) {
-        character->dash -= 1;
+    else if (character->dash >= 0) {
+        character->dash -= 12 * delta_t;
         character->direction = character->direction_dash;
     }
     else {
-        character->velocity = 2;
+        character->velocity = 3;
 
         if (character->gravity > GRAVITY)
-            character->gravity -= 0.1;
+            character->gravity -= 15 * delta_t;
     }
 
     character_collision->position = character->position;
@@ -682,7 +694,7 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     character->direction.y = character->gravity  * delta_t;
 
     if (PointPlaneCollision(character->position, character->position+character->direction, ground))
-        character->position = glm::vec4 (2.0f, 4.0f, 2.0f, 1.0f);
+        character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
 
     character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
     character->direction = CubePlaneCollision(*character_collision, character->direction, wall);
@@ -1478,7 +1490,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     }
 
     if (key == GLFW_KEY_C) {
-        if (action == GLFW_PRESS && Madeline.dash == 0) {
+        if (action == GLFW_PRESS && Madeline.dash <= 0) {
             // C pressionado
             dash = true;
         }
@@ -1487,7 +1499,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_SPACE) {
         if (action == GLFW_PRESS ) {
             // Space pressionado
-            Madeline.gravity = 3;
+            Madeline.gravity = 7;
         }
     }
 

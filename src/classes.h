@@ -7,9 +7,9 @@ struct Character
     glm::vec4   position;
     glm::vec4   direction = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
     glm::vec4   direction_dash = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
-    int         dash = 0;
-    float       gravity = -3.0;
-    float       velocity = 2.0;
+    float       dash = 0;
+    float       gravity = -4.0;
+    float       velocity = 3.0;
 };
 
 struct Box
