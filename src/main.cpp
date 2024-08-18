@@ -373,14 +373,10 @@ int main()
     madeline_collision.length = 0.5;
 
     plane.position = glm::vec4 (0.0f,2.5f,0.0f,1.0f);
-    plane.height = 0;
-    plane.width = 2.5;
+    plane.direction = normalize(glm::vec4 (0.0f,1.0f,1.0f,0.0f));
+    plane.height = 1.77;
+    plane.width = 1.77;
     plane.length = 2.5;
-
-    ground.position = glm::vec4 (0.0f,-6.0f,0.0f,1.0f);
-    ground.height = 0;
-    ground.width = 0;
-    ground.length = 0;
 
     wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
     wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
@@ -433,7 +429,7 @@ int main()
         #define MADELINE  4
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
-        for (int i = 1; i<= 2; i++)
+        for (int i = 1; i<= 1; i++)
         {
             // Cada cópia do cubo possui uma matriz de modelagem independente,
             // já que cada cópia estará em uma posição (rotação, escala, ...)
@@ -478,7 +474,7 @@ int main()
             // função BuildTriangles(), e veja a documentação da função
             // glDrawElements() em http://docs.gl/gl3/glDrawElements.
 
-            glUniform1i(g_object_id_uniform, CUBE);
+            glUniform1i(render_as_black_uniform, CUBE);
             glDrawElements(
                 g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
                 g_VirtualScene["cube_faces"].num_indices,
@@ -566,8 +562,9 @@ int main()
         DrawVirtualObject("the_bunny");
 
         // Desenhamos o plano do chão
-        model = Matrix_Scale(2.5f,1.0f,2.5f)*
-        Matrix_Translate(0.0f,2.5f,0.0f);
+        model = Matrix_Translate(0.0f,2.5f,0.0f) *
+        Matrix_Rotate_X(M_PI/4) *
+        Matrix_Scale(2.5f,1.0f,2.5f);
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
@@ -580,11 +577,11 @@ int main()
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
 
-//        model = Matrix_Scale(1.0f, 1.0f, 1.0f)*
-//       Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
-//        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-//        glUniform1i(g_object_id_uniform, MADELINE);
-//       DrawVirtualObject("madeline");
+        model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
+        Matrix_Scale(0.005f, 0.005f, 0.005f);
+        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, MADELINE);
+        DrawVirtualObject("madeline");
 
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
@@ -693,7 +690,7 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     character->direction = character->direction * character->velocity * delta_t;
     character->direction.y = character->gravity  * delta_t;
 
-    if (PointPlaneCollision(character->position, character->position+character->direction, ground))
+    if (character->position.y <= -5.0)
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
 
     character->direction = CubePlaneCollision(*character_collision, character->direction, plane);

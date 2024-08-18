@@ -9,7 +9,7 @@ bool PointPlaneCollision(glm::vec4 point_a, glm::vec4 point_b, Box plane){
     glm::vec4 n = plane.direction;
     float t = dotproduct(c-point_a,n)/dotproduct(point_b-point_a,n);
     if (t>=0 && t<= 1){
-        glm::vec4 p = point_a + t*(point_a-point_b);
+        glm::vec4 p = point_a + t*(point_b-point_a);
         p = p - (plane.position - glm::vec4 (0.0f, 0.0f, 0.0f, 1.0f));
         bool inX = ((p.x >= -plane.width) && (p.x <= plane.width)) || plane.width == 0;
         bool inY = ((p.y >= -plane.height) && (p.y <= plane.height)) || plane.height == 0;
@@ -19,6 +19,7 @@ bool PointPlaneCollision(glm::vec4 point_a, glm::vec4 point_b, Box plane){
     }
     return false;
 }
+
 
 glm::vec4 CubePlaneCollision(Box cube, glm::vec4 direction, Box plane){
     glm::vec4 points[8];
@@ -38,18 +39,15 @@ glm::vec4 CubePlaneCollision(Box cube, glm::vec4 direction, Box plane){
     glm::vec4 direction_y = glm::vec4 (0.0f, direction.y, 0.0f, 0.0f);
     glm::vec4 direction_z = glm::vec4 (0.0f, 0.0f, direction.z, 0.0f);
 
-    for (int i = 0; i <= 8; i++){
-        if (PointPlaneCollision(points[i],points[i]+direction_x,plane))
-            direction.x = 0;
-    }
-
-    for (int i = 0; i <= 8; i++){
-        if (PointPlaneCollision(points[i],points[i]+direction_y,plane))
-            direction.y = 0;
-
-    }for (int i = 0; i <= 8; i++){
-        if (PointPlaneCollision(points[i],points[i]+direction_z,plane))
-            direction.z = 0;
+    for (int i = 0; i < 8; i++){
+        for (int j = 0; j < 8; j++){
+            if (i != j && PointPlaneCollision(points[i]+direction_x,points[j]+direction_x,plane))
+                direction.x = 0;
+            if (i != j && PointPlaneCollision(points[i]+direction_y,points[j]+direction_y,plane))
+                direction.y = 0;
+            if (i != j && PointPlaneCollision(points[i]+direction_z,points[j]+direction_z,plane))
+                direction.z = 0;
+        }
     }
 
     return direction;
