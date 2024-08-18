@@ -158,7 +158,7 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 // Funções auxiliares
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
-void BezierMovement(Box* strawberry, float t);
+void BezierMovement(Box* strawberry, float t, float delta_t);
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -235,10 +235,24 @@ float t = 0.0;
 
 Character Madeline;
 
-Box plane;
-Box wall;
-Box ground;
-Box cube;
+Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.0, 2.5, 2.5),
+                Box(glm::vec4 (2.5f,5.0f,0.0f,1.0f), glm::vec4 (1.0f,0.0f,0.0f,0.0f), 2.5, 0.0, 2.5),
+                Box(glm::vec4 (0.0f,5.0f,2.5f,1.0f), glm::vec4 (0.0f,0.0f,-1.0f,0.0f), 2.5, 2.5, 0.0)};
+
+Box cubes[] =   {Box(glm::vec4 (-4.0f, 2.5f, -5.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0)};
+
+Box strawberry = Box(glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.4, 0.25, 0.25);
+
+//wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
+//wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
+//wall.height = 2.5;
+//wall.width = 0;
+//wall.length = 2.5;
+//
+//cube.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
+//cube.height = 0.4;
+//cube.width = 0.25;
+//cube.length = 0.25;
 
 // Variável para alternar entre câmera livre e câmera look_at
 bool look_at = false;
@@ -369,27 +383,7 @@ int main()
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-    Box madeline_collision;
-    madeline_collision.position = Madeline.position;
-    madeline_collision.height = 0.5;
-    madeline_collision.width = 0.25;
-    madeline_collision.length = 0.25;
-
-    plane.position = glm::vec4 (0.0f,2.5f,0.0f,1.0f);
-    plane.height = 0.0;
-    plane.width = 2.55;
-    plane.length = 2.5;
-
-    wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
-    wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
-    wall.height = 2.5;
-    wall.width = 0;
-    wall.length = 2.5;
-
-    cube.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
-    cube.height = 0.4;
-    cube.width = 0.25;
-    cube.length = 0.25;
+    Box madeline_collision (Madeline.position, glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), 0.5, 0.25, 0.25);
 
     // Variáveis para calcular delta_t inicializadas
     float old_seconds = (float)glfwGetTime();
@@ -430,68 +424,29 @@ int main()
         #define MADELINE  4
         #define COLLISION  5
 
-        // Vamos desenhar 2 instâncias (cópias) do cubo
-        for (int i = 1; i<= 2; i++)
-        {
-            // Cada cópia do cubo possui uma matriz de modelagem independente,
-            // já que cada cópia estará em uma posição (rotação, escala, ...)
-            // diferente em relação ao espaço global (World Coordinates). Veja
-            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+        if (strawberry.status){
+            if (bezier && t<=1){
+                t+=delta_t;
+                BezierMovement(&strawberry, t, delta_t);
+            } else if (t>1)
+                t = 0;
             glm::mat4 model;
+            model = Matrix_Identity();
+            model *= Matrix_Translate(strawberry.position.x, strawberry.position.y, strawberry.position.z);
+            model *= Matrix_Scale(strawberry.width*2, strawberry.height*2, strawberry.length*2);
 
-            if (i == 1)
-            {
-                // A primeira cópia do cubo não sofrerá nenhuma transformação
-                // de modelagem. Portanto, sua matriz "model" é a identidade, e
-                // suas coordenadas no espaço global (World Coordinates) serão
-                // *exatamente iguais* a suas coordenadas no espaço do modelo
-                // (Model Coordinates).
-                model = Matrix_Identity();
-                model *= Matrix_Translate(cube.position.x, cube.position.y, cube.position.z);
-                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
-            }
-            else if (i == 2) {
-                if (look_at) {
-                    // Modelo do personagem
-                    model = Matrix_Identity();
-                    model *= Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
-                    model *= Matrix_Scale(madeline_collision.width*2, madeline_collision.height*2, madeline_collision.length*2); // PRIMEIRO escala
-                }
-            }
-
-            // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
-            // arquivo "shader_vertex.glsl", onde esta é efetivamente
-            // aplicada em todos os pontos.
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
             glUniform1i(render_as_red_uniform, false);
 
-            // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
-            // VAO como triângulos, formando as faces do cubo. Esta
-            // renderização irá executar o Vertex Shader definido no arquivo
-            // "shader_vertex.glsl", e o mesmo irá utilizar as matrizes
-            // "model", "view" e "projection" definidas acima e já enviadas
-            // para a placa de vídeo (GPU).
-            //
-            // Veja a definição de g_VirtualScene["cube_faces"] dentro da
-            // função BuildTriangles(), e veja a documentação da função
-            // glDrawElements() em http://docs.gl/gl3/glDrawElements.
-
             glUniform1i(render_as_red_uniform, CUBE);
-
-            if (cube.status) {
-                glDrawElements(
-                    g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
-                    g_VirtualScene["cube_faces"].num_indices,
-                    GL_UNSIGNED_INT,
-                    (void*)g_VirtualScene["cube_faces"].first_index
-                );
-            }
+            glDrawElements(
+                g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
+                g_VirtualScene["cube_faces"].num_indices,
+                GL_UNSIGNED_INT,
+                (void*)g_VirtualScene["cube_faces"].first_index
+            );
         }
 
-        if (bezier && t<=1){
-            t+=delta_t;
-            BezierMovement(&cube, t);
-        }
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
         CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
@@ -539,6 +494,83 @@ int main()
         glUniformMatrix4fv(g_view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 
+        for (Box cube : cubes){
+            // Cada cópia do cubo possui uma matriz de modelagem independente,
+            // já que cada cópia estará em uma posição (rotação, escala, ...)
+            // diferente em relação ao espaço global (World Coordinates). Veja
+            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+
+            if (cube.status) {
+                model = Matrix_Identity();
+                model *= Matrix_Translate(cube.position.x, cube.position.y, cube.position.z);
+                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
+
+                // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
+                // arquivo "shader_vertex.glsl", onde esta é efetivamente
+                // aplicada em todos os pontos.
+                glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+                glUniform1i(render_as_red_uniform, false);
+
+                // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
+                // VAO como triângulos, formando as faces do cubo. Esta
+                // renderização irá executar o Vertex Shader definido no arquivo
+                // "shader_vertex.glsl", e o mesmo irá utilizar as matrizes
+                // "model", "view" e "projection" definidas acima e já enviadas
+                // para a placa de vídeo (GPU).
+                //
+                // Veja a definição de g_VirtualScene["cube_faces"] dentro da
+                // função BuildTriangles(), e veja a documentação da função
+                // glDrawElements() em http://docs.gl/gl3/glDrawElements.
+
+                glUniform1i(render_as_red_uniform, CUBE);
+                glDrawElements(
+                    g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
+                    g_VirtualScene["cube_faces"].num_indices,
+                    GL_UNSIGNED_INT,
+                    (void*)g_VirtualScene["cube_faces"].first_index
+                );
+            }
+        }
+
+        for (Box plane : planes){
+            // Cada cópia do cubo possui uma matriz de modelagem independente,
+            // já que cada cópia estará em uma posição (rotação, escala, ...)
+            // diferente em relação ao espaço global (World Coordinates). Veja
+            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+
+            if (plane.status) {
+                glm::vec4 normal = glm::vec4 (0.0, 1.0, 0.0, 0.0);
+                float theta = 0;
+                float phi = 0;
+
+                glm::vec4 w = plane.direction;
+                w.z = 0;
+                if (norm(w)!=0) {
+                    w = normalize(w);
+                    float cos_theta = dotproduct(w, normal)/(norm(w)*norm(normal));
+                    theta = acos(cos_theta);
+                }
+
+                glm::vec4 u = plane.direction;
+                u.x = 0;
+                if (norm(u)!=0) {
+                    u = normalize(u);
+                    float cos_phi = dotproduct(u, normal)/(norm(u)*norm(normal));
+                    phi = acos(cos_phi);
+                }
+
+                printf("%.2f\n", theta);
+                printf("%.2f\n\n", phi);
+
+                model = Matrix_Translate(plane.position.x,plane.position.y,plane.position.z)
+                  *  Matrix_Scale(plane.width, plane.height, plane.length)
+                  *  Matrix_Rotate_X(phi)
+                  *  Matrix_Rotate_Z(theta);
+                glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(g_object_id_uniform, PLANE);
+                DrawVirtualObject("the_plane");
+            }
+        }
         // Desenhamos o modelo da vaca
         model = Matrix_Translate(0.0f, 4.0f, 0.0f)
             * Matrix_Rotate_Z(0.6f)
@@ -556,21 +588,6 @@ int main()
         glUniform1i(g_object_id_uniform, BUNNY);
         DrawVirtualObject("the_bunny");
 
-        // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f,2.5f,0.0f) *
-        Matrix_Scale(2.5f,1.0f,2.5f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, PLANE);
-        DrawVirtualObject("the_plane");
-
-        // Desenhamos o plano da parede
-        model = Matrix_Translate(2.5f,5.0f,0.0f) *
-        Matrix_Rotate_Z(M_PI/2) *
-        Matrix_Scale(2.5f,1.0f,2.5f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, PLANE);
-        DrawVirtualObject("the_plane");
-
         if (look_at){
             glm::vec4 w = (camera_view_vector);
             w.y = 0;
@@ -582,12 +599,10 @@ int main()
             if (w.x < 0)
                 theta = - acos(cos_theta);
 
-            printf("%.2f\n",cos_theta);
-
             model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
-            Matrix_Rotate_Y(theta) *
-            Matrix_Translate(0.22, -0.5, 0.15)*
-            Matrix_Scale(0.005f, 0.005f, 0.005f);
+                Matrix_Rotate_Y(theta) *
+                Matrix_Translate(0.22, -0.5, 0.15)*
+                Matrix_Scale(0.005f, 0.005f, 0.005f);
             glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
             glUniform1i(g_object_id_uniform, MADELINE);
             DrawVirtualObject("madeline");
@@ -638,6 +653,7 @@ void CameraMovement(bool look_at, Character* character, glm::vec4* camera_positi
     }
     else {
         (*camera_view_vector) = glm::vec4(x, y, z, 0.0f);
+        *camera_position_c = character->position;
     }
 
 }
@@ -703,31 +719,47 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     if (character->position.y <= -5.0)
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
 
-    character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
-    character->direction = CubePlaneCollision(*character_collision, character->direction, wall);
-    if (CubeCubeCollision(*character_collision, cube, character->direction) != character->direction)
-        cube.status = false;
+    for (Box plane : planes)
+        character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
+
+    for (Box cube : cubes)
+        character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
+
+    if (CubeCubeCollision(*character_collision, strawberry, character->direction) != character->direction)
+        strawberry.status = false;
+
     character->position += character->direction;
 
+    if (character->direction.y == 0.0)
+        character->gravity = 0.0;
+
     if (!look_at){
-        *camera_position_c = character->position;
     }
 }
 
-void BezierMovement(Box* strawberry, float t){
-    glm::vec4 p[4];
-    glm::vec4 c[3];
-    p[0] = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
-    p[1] = glm::vec4 (-2.0f, 6.0f, -1.0f, 1.0f);
-    p[2] = glm::vec4 (-1.0f, 12.0f, -3.0f, 1.0f);
-    p[3] = glm::vec4 (3.0f, 17.0f, -1.0f, 1.0f);
-    for (int i = 0; i < 3; i++){
+void BezierMovement(Box* strawberry, float t, float delta_t){
+    glm::vec4 p[5];
+    glm::vec4 c[4];
+    glm::vec4 c2[3];
+    glm::vec4 c3[2];
+    p[0] = glm::vec4 (-1.0f, 0.0f, -1.0f, 1.0f);
+    p[1] = glm::vec4 (-3.0f, 0.0f, -3.0f, 1.0f);
+    p[2] = glm::vec4 (-1.0f, 0.0f, -5.0f, 1.0f);
+    p[3] = glm::vec4 (1.0f, 0.0f, -3.0f, 1.0f);
+    p[4] = glm::vec4 (-1.0f, 0.0f, -1.0f, 1.0f);
+    for (int i = 0; i < 4; i++){
         c[i] = p[i] + t*(p[(i+1)]-p[i]);
     }
-    glm::vec4 c123 = c[0] + t*(c[1]-c[0]);
-    glm::vec4 c234 = c[1] + t*(c[2]-c[1]);
-    glm::vec4 ct = c123 + t*(c234-c123);
+    for (int i = 0; i < 3; i++){
+        c2[i] = c[i] + t*(c[(i+1)]-c[i]);
+    }
+    for (int i = 0; i < 2; i++){
+        c3[i] = c2[i] + t*(c2[(i+1)]-c2[i]);
+    }
+    glm::vec4 ct = c3[0] + t*(c3[1]-c3[0]);
+    float y = strawberry->position.y+delta_t*4;
     strawberry->position = ct;
+    strawberry->position.y = y;
 }
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)

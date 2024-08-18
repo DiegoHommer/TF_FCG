@@ -15,11 +15,19 @@ struct Character
 struct Box
 {
     glm::vec4   position;
-    glm::vec4   direction = glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f);
+    glm::vec4   direction;
     float       height;
     float       width;
     float       length;
     bool        status = true;
+    Box (glm::vec4 p, glm::vec4 d, float h, float w, float l){
+        position = p;
+        direction = d;
+        height = h;
+        width = w;
+        length  = l;
+        status = true;
+    }
 };
 
 
