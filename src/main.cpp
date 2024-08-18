@@ -431,7 +431,7 @@ int main()
         #define COLLISION  5
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
-        for (int i = 1; i<= 1; i++)
+        for (int i = 1; i<= 2; i++)
         {
             // Cada cópia do cubo possui uma matriz de modelagem independente,
             // já que cada cópia estará em uma posição (rotação, escala, ...)
@@ -572,7 +572,21 @@ int main()
         DrawVirtualObject("the_plane");
 
         if (look_at){
-            model = Matrix_Translate(Madeline.position.x+0.22, Madeline.position.y-0.5, Madeline.position.z+0.15)*
+            glm::vec4 w = (camera_view_vector);
+            w.y = 0;
+            w = normalize(w);
+            glm::vec4 normal = glm::vec4 (0.0, 0.0, 1.0, 0.0);
+
+            float cos_theta = dotproduct(w, normal)/(norm(w)*norm(normal));
+            float theta = acos(cos_theta);
+            if (w.x < 0)
+                theta = - acos(cos_theta);
+
+            printf("%.2f\n",cos_theta);
+
+            model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
+            Matrix_Rotate_Y(theta) *
+            Matrix_Translate(0.22, -0.5, 0.15)*
             Matrix_Scale(0.005f, 0.005f, 0.005f);
             glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
             glUniform1i(g_object_id_uniform, MADELINE);
