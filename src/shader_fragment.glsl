@@ -28,6 +28,7 @@ uniform mat4 projection;
 #define BUNNY 2
 #define PLANE 3
 #define MADELINE  4
+#define WINGED_STRBRY 5
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -97,7 +98,7 @@ vec3 computeBlinnPhongLighting(vec4 n, vec4 l, vec4 v, vec3 Kd0, vec3 Kd1, vec3 
 
 // Aqui definimos o modelo de iluminacao usado para cada objeto
 vec3 computeLighting(vec4 n, vec4 l, vec4 v, vec3 Kd0, vec3 Kd1, vec3 Ks, vec3 Ka, float q, int object_id) {
-    if (object_id == BUNNY) {
+    if (object_id == BUNNY || object_id == PLANE) {
         return computeBlinnPhongLighting(n, l, v, Kd0, Kd1, Ka, Ks, q);
     } else {
         return computeLambertLighting(n, l, Kd0, Kd1, Ka);
@@ -118,11 +119,11 @@ void main()
 
     // Texture coordinates calculation
     vec2 texCoords;
-    if (object_id == CUBE || object_id == PLANE || object_id == MADELINE) {
+    if (object_id == MADELINE || object_id == CUBE || object_id == WINGED_STRBRY) {
         texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
-    } else if (object_id == BUNNY) {
+    } else if (object_id == PLANE) {
         texCoords = texcoords;
     }
 
@@ -138,30 +139,30 @@ void main()
     }else {
         // Phong Shading Interpolation (para cada fragmento)
 
-        if (object_id == MADELINE) {
-            Kd0 = texture(TextureImage3, texCoords).rgb;
+        if (object_id == MADELINE || object_id == WINGED_STRBRY) {
+            Kd0 = texture(TextureImage1, texCoords).rgb;
             Kd1 = vec3(0.0, 0.0, 0.0);
             Ks = vec3(0.0, 0.0, 0.0);
             Ka = vec3(0.0, 0.0, 0.0);
             q = 0.0;
         } else if (object_id == CUBE) {
-            Kd0 = texture(TextureImage0, texCoords).rgb;
-            Kd1 = texture(TextureImage1, texCoords).rgb;
+            Kd0 = texture(TextureImage2, texCoords).rgb;
+            Kd1 = vec3(0.0, 0.0, 0.0);
             Ks = vec3(0.0, 0.0, 0.0);
             Ka = vec3(0.0, 0.0, 0.0);
             q = 0.0;
         } else if (object_id == BUNNY) {
-            Kd0 = texture(TextureImage2, texCoords).rgb; // Wood texture
+            Kd0 = texture(TextureImage1, texCoords).rgb; // Wood texture
             Kd1 = vec3(0.0, 0.0, 0.0);
             Ks = vec3(0.1, 0.1, 0.1); // Low specular for wood
             Ka = vec3(0.0, 0.0, 0.0); // Ambient color similar to wood
             q = 10.0; // Subtle shininess
         } else if (object_id == PLANE) {
             Kd0 = texture(TextureImage0, texCoords).rgb;
-            Kd1 = texture(TextureImage1, texCoords).rgb;
-            Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.0, 0.0, 0.0);
-            q = 0.0;
+            Kd1 = vec3(0.0, 0.0, 0.0);
+            vec3 Ks = vec3(0.9, 0.9, 1.0);
+            vec3 Ka = vec3(0.05, 0.05, 0.1); 
+            float q = 128.0; 
         }
 
         // Cálculo da iluminação

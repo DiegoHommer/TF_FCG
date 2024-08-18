@@ -315,10 +315,10 @@ int main()
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
-    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage2
-    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage3
+    LoadTextureImage("../../data/tc-ice.jpg");  // TextureImage0
+    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage1
+    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage2
+    LoadTextureImage("../../data/tc-ice.jpg"); // TextureImage3
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cowmodel("../../data/cow.obj");
@@ -336,6 +336,10 @@ int main()
     ObjModel madelinemodel("../../data/madeline.obj");
     ComputeNormals(&madelinemodel);
     BuildTrianglesAndAddToVirtualScene(&madelinemodel);
+
+    ObjModel wingedstrberrymodel("../../data/winged_strawberry.obj");
+    ComputeNormals(&wingedstrberrymodel);
+    BuildTrianglesAndAddToVirtualScene(&wingedstrberrymodel);
 
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
@@ -373,10 +377,9 @@ int main()
     madeline_collision.length = 0.5;
 
     plane.position = glm::vec4 (0.0f,2.5f,0.0f,1.0f);
-    plane.direction = normalize(glm::vec4 (0.0f,1.0f,1.0f,0.0f));
-    plane.height = 1.77;
-    plane.width = 1.77;
-    plane.length = 2.5;
+    plane.height = 0.0f;
+    plane.width = 5.0;
+    plane.length = 5.0;
 
     wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
     wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
@@ -427,6 +430,7 @@ int main()
         #define BUNNY 2
         #define PLANE  3
         #define MADELINE  4
+        #define WINGED_STRBRY 5
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
         for (int i = 1; i<= 1; i++)
@@ -444,17 +448,9 @@ int main()
                 // suas coordenadas no espaço global (World Coordinates) serão
                 // *exatamente iguais* a suas coordenadas no espaço do modelo
                 // (Model Coordinates).
-                model = Matrix_Identity();
-                model *= Matrix_Translate(1.0f, 6.0f, 2.0f);
-                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
-            }
-            else if (i == 2) {
-                if (look_at) {
-                    // Modelo do personagem
-                    model = Matrix_Identity();
-                    model *= Matrix_Scale(1.0f, 1.0f, 1.0f); // PRIMEIRO escala
-                    model *= Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
-                }
+                model = Matrix_Identity() 
+                    * Matrix_Translate(1.0f, 6.0f, 2.0f)
+                    * Matrix_Scale(2.0f, 0.5f, 0.5f); 
             }
 
             // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
@@ -474,7 +470,7 @@ int main()
             // função BuildTriangles(), e veja a documentação da função
             // glDrawElements() em http://docs.gl/gl3/glDrawElements.
 
-            glUniform1i(render_as_black_uniform, CUBE);
+            glUniform1i(g_object_id_uniform, CUBE);
             glDrawElements(
                 g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
                 g_VirtualScene["cube_faces"].num_indices,
@@ -563,8 +559,7 @@ int main()
 
         // Desenhamos o plano do chão
         model = Matrix_Translate(0.0f,2.5f,0.0f) *
-        Matrix_Rotate_X(M_PI/4) *
-        Matrix_Scale(2.5f,1.0f,2.5f);
+        Matrix_Scale(5.0f,1.0f,5.0f);
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
@@ -577,11 +572,21 @@ int main()
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
 
-        model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
-        Matrix_Scale(0.005f, 0.005f, 0.005f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, MADELINE);
-        DrawVirtualObject("madeline");
+        // Desenhamos a madeline (player character)
+        if (look_at) {
+            model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z) *
+                Matrix_Scale(0.005f, 0.005f, 0.005f);
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, MADELINE);
+            DrawVirtualObject("madeline");
+        }
+
+        // Desenhamos uma winged strawberry
+        model = Matrix_Translate(3.0f, 4.0f, 0.0f) 
+            * Matrix_Scale(0.2f, 0.2f, 0.2f);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, WINGED_STRBRY);
+        DrawVirtualObject("the_winged_strawberry");
 
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
@@ -591,7 +596,6 @@ int main()
 
     glfwTerminate();
 
-    return 0;
     return 0;
 }
 
