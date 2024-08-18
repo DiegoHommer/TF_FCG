@@ -22,6 +22,8 @@ uniform mat4 projection;
 #define CUBE 0
 #define COW 1
 #define BUNNY 2
+#define PLANE 3
+#define MADELINE  4
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -84,7 +86,7 @@ vec3 computeBlinnPhongLighting(vec4 n, vec4 l, vec4 v, vec3 Kd0, vec3 Kd1, vec3 
     vec4 h = normalize(v + l);
     float spec = pow(max(dot(n, h), 0.0), q);
     vec3 specular = Ks * spec;
-    
+
     return ambient + diffuse + specular;
 }
 
@@ -102,7 +104,7 @@ void main()
     // Camera position calculation
     vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 camera_position = inverse(view) * origin;
-    
+
     // Fragment properties
     vec4 p = position_world;
     vec4 n = normalize(normal);
@@ -111,7 +113,7 @@ void main()
 
     // Texture coordinates calculation
     vec2 texCoords;
-    if (object_id == CUBE) {
+    if (object_id == CUBE || object_id == PLANE || object_id == MADELINE) {
         texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == COW || object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
@@ -122,7 +124,7 @@ void main()
     // Mapeamento de textura e propriedades do objeto
     vec3 Kd0, Kd1, Ka, Ks;
     float q;
-    if (object_id == COW) {
+    if (object_id == COW || object_id == MADELINE) {
         Kd0 = texture(TextureImage3, texCoords).rgb;
         Kd1 = vec3(0.0, 0.0, 0.0);
         Ks = vec3(0.0, 0.0, 0.0);
@@ -140,6 +142,12 @@ void main()
         Ks = vec3(0.1, 0.1, 0.1); // Low specular for wood
         Ka = vec3(0.0, 0.0, 0.0); // Ambient color similar to wood
         q = 10.0; // Subtle shininess
+    } else if (object_id == PLANE) {
+        Kd0 = texture(TextureImage0, texCoords).rgb;
+        Kd1 = texture(TextureImage1, texCoords).rgb;
+        Ks = vec3(0.0, 0.0, 0.0);
+        Ka = vec3(0.0, 0.0, 0.0);
+        q = 0.0;
     }
 
     // Cálculo da iluminação
@@ -148,5 +156,5 @@ void main()
     // Transparency and gamma correction
     color.a = 1.0;
     color.rgb = pow(color.rgb, vec3(1.0) / 2.2);
-} 
+}
 
