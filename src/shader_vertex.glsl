@@ -11,6 +11,21 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+// Parâmetros da axis-aligned bounding box (AABB) do modelo
+uniform vec4 bbox_min;
+uniform vec4 bbox_max;
+
+// Identificador que define qual objeto está sendo desenhado no momento
+#define CUBE 0
+#define COW 1
+#define BUNNY 2
+#define PLANE 3
+#define MADELINE  4
+uniform int object_id;
+
+// Variáveis para acesso das imagens de textura
+uniform sampler2D TextureImage3;
+
 // Atributos de vértice que serão gerados como saída ("out") pelo Vertex Shader.
 // ** Estes serão interpolados pelo rasterizador! ** gerando, assim, valores
 // para cada fragmento, os quais serão recebidos como entrada pelo Fragment
@@ -19,49 +34,68 @@ out vec4 position_world;
 out vec4 position_model;
 out vec4 normal;
 out vec2 texcoords;
+out vec3 gouraud_color; // added for Gouraud shading
+
+// Texture mapping functions
+vec2 computePlanarTextureCoords(vec4 position_model, vec4 bbox_min, vec4 bbox_max) {
+    float U = (position_model.x - bbox_min.x) / (bbox_max.x - bbox_min.x);
+    float V = (position_model.y - bbox_min.y) / (bbox_max.y - bbox_min.y);
+    return vec2(U, V);
+}
+
+
+// Lighting functions
+vec3 computeLambertLighting(vec4 n, vec4 l, vec3 Kd0, vec3 Kd1, vec3 Ka) {
+    // Calculo do Termo difuso (Lambert)
+    float lambert = max(0.0, dot(n, l));
+    vec3 diffuse = (Kd0 * (lambert + 0.01)) + (Kd1 * max((0.3 - lambert), 0.0));
+
+    // Calculo do Termo ambiente
+    vec3 ambient = Ka;
+
+    return diffuse + ambient;
+}
+
+vec3 computeBlinnPhongLighting(vec4 n, vec4 l, vec4 v, vec3 Kd0, vec3 Kd1, vec3 Ka, vec3 Ks, float q) {
+    // Calculo do Termo difuso (Lambert)
+    float lambert = max(0.0, dot(n, l));
+    vec3 diffuse = (Kd0 * (lambert + 0.01)) + (Kd1 * max((0.3 - lambert), 0.0));
+
+    // Calculo do Termo ambiente
+    vec3 ambient = Ka;
+
+    // Calulo do Termo Especular (Blinn-Phong)
+    vec4 h = normalize(v + l);
+    float spec = pow(max(dot(n, h), 0.0), q);
+    vec3 specular = Ks * spec;
+
+    return ambient + diffuse + specular;
+}
 
 void main()
 {
-    // A variável gl_Position define a posição final de cada vértice
-    // OBRIGATORIAMENTE em "normalized device coordinates" (NDC), onde cada
-    // coeficiente estará entre -1 e 1 após divisão por w.
-    // Veja {+NDC2+}.
-    //
-    // O código em "main.cpp" define os vértices dos modelos em coordenadas
-    // locais de cada modelo (array model_coefficients). Abaixo, utilizamos
-    // operações de modelagem, definição da câmera, e projeção, para computar
-    // as coordenadas finais em NDC (variável gl_Position). Após a execução
-    // deste Vertex Shader, a placa de vídeo (GPU) fará a divisão por W. Veja
-    // slides 41-67 e 69-86 do documento Aula_09_Projecoes.pdf.
-
     gl_Position = projection * view * model * model_coefficients;
-
-    // Como as variáveis acima  (tipo vec4) são vetores com 4 coeficientes,
-    // também é possível acessar e modificar cada coeficiente de maneira
-    // independente. Esses são indexados pelos nomes x, y, z, e w (nessa
-    // ordem, isto é, 'x' é o primeiro coeficiente, 'y' é o segundo, ...):
-    //
-    //     gl_Position.x = model_coefficients.x;
-    //     gl_Position.y = model_coefficients.y;
-    //     gl_Position.z = model_coefficients.z;
-    //     gl_Position.w = model_coefficients.w;
-    //
-
-    // Agora definimos outros atributos dos vértices que serão interpolados pelo
-    // rasterizador para gerar atributos únicos para cada fragmento gerado.
-
-    // Posição do vértice atual no sistema de coordenadas global (World).
     position_world = model * model_coefficients;
-
-    // Posição do vértice atual no sistema de coordenadas local do modelo.
     position_model = model_coefficients;
-
-    // Normal do vértice atual no sistema de coordenadas global (World).
-    // Veja slides 123-151 do documento Aula_07_Transformacoes_Geometricas_3D.pdf.
     normal = inverse(transpose(model)) * normal_coefficients;
     normal.w = 0.0;
+    texcoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
 
-    // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
-    texcoords = texture_coefficients;
+    vec4 n = normalize(normal);
+    vec4 l = normalize(vec4(1.0, 1.0, 0.0, 0.0));
+
+    // Mapeamento de textura e propriedades do objeto
+    vec3 Kd0, Kd1, Ka, Ks;
+    float q;
+
+    if(object_id == COW){
+        Kd0 = texture(TextureImage3, texcoords).rgb;
+        Kd1 = vec3(0.0, 0.0, 0.0);
+        Ka = vec3(0.0, 0.0, 0.0);
+
+        gouraud_color = computeLambertLighting(n, l, Kd0, Kd1, Ka);
+    }else{
+        gouraud_color = vec3(0.0,0.0,0.0);
+    }
 }
 

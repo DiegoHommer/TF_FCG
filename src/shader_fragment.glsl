@@ -13,10 +13,14 @@ in vec4 position_model;
 // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
 in vec2 texcoords;
 
+// Cor obtida em casos de Gouraud shading
+in vec3 gouraud_color;
+
 // Matrizes computadas no código C++ e enviadas para a GPU
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+
 
 // Identificador que define qual objeto está sendo desenhado no momento
 #define CUBE 0
@@ -44,7 +48,7 @@ out vec4 color;
 #define M_PI_2 1.57079632679489661923
 
 
-// Funcoes auxiliares
+// Funcoes de mapeamento de textura
 vec2 computeSphericalTextureCoords(vec4 position_model, vec4 bbox_min, vec4 bbox_max) {
     vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
     float radius = 1.0;
@@ -63,6 +67,7 @@ vec2 computePlanarTextureCoords(vec4 position_model, vec4 bbox_min, vec4 bbox_ma
     return vec2(U, V);
 }
 
+// Funcoes de iluminação
 vec3 computeLambertLighting(vec4 n, vec4 l, vec3 Kd0, vec3 Kd1, vec3 Ka) {
     // Calculo do Termo difuso (Lambert)
     float lambert = max(0.0, dot(n, l));
@@ -115,7 +120,7 @@ void main()
     vec2 texCoords;
     if (object_id == CUBE || object_id == PLANE || object_id == MADELINE) {
         texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
-    } else if (object_id == COW || object_id == BUNNY) {
+    } else if (object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == BUNNY) {
         texCoords = texcoords;
@@ -124,34 +129,44 @@ void main()
     // Mapeamento de textura e propriedades do objeto
     vec3 Kd0, Kd1, Ka, Ks;
     float q;
-    if (object_id == COW || object_id == MADELINE) {
-        Kd0 = texture(TextureImage3, texCoords).rgb;
-        Kd1 = vec3(0.0, 0.0, 0.0);
-        Ks = vec3(0.0, 0.0, 0.0);
-        Ka = vec3(0.0, 0.0, 0.0);
-        q = 0.0;
-    } else if (object_id == CUBE) {
-        Kd0 = texture(TextureImage0, texCoords).rgb;
-        Kd1 = texture(TextureImage1, texCoords).rgb;
-        Ks = vec3(0.0, 0.0, 0.0);
-        Ka = vec3(0.0, 0.0, 0.0);
-        q = 0.0;
-    } else if (object_id == BUNNY) {
-        Kd0 = texture(TextureImage2, texCoords).rgb; // Wood texture
-        Kd1 = vec3(0.0, 0.0, 0.0);
-        Ks = vec3(0.1, 0.1, 0.1); // Low specular for wood
-        Ka = vec3(0.0, 0.0, 0.0); // Ambient color similar to wood
-        q = 10.0; // Subtle shininess
-    } else if (object_id == PLANE) {
-        Kd0 = texture(TextureImage0, texCoords).rgb;
-        Kd1 = texture(TextureImage1, texCoords).rgb;
-        Ks = vec3(0.0, 0.0, 0.0);
-        Ka = vec3(0.0, 0.0, 0.0);
-        q = 0.0;
-    }
 
-    // Cálculo da iluminação
-    color.rgb = computeLighting(n, l, v, Kd0, Kd1, Ks, Ka, q, object_id);
+    // Aqui definimos qual modelo de interpolacao de iluminacao usamos 
+    if (gouraud_color != vec3(0.0,0.0,0.0)){
+        // Gouraud Shading Interpolation (para cada vertice)
+        color.rgb = gouraud_color;
+
+    }else {
+        // Phong Shading Interpolation (para cada fragmento)
+
+        if (object_id == MADELINE) {
+            Kd0 = texture(TextureImage3, texCoords).rgb;
+            Kd1 = vec3(0.0, 0.0, 0.0);
+            Ks = vec3(0.0, 0.0, 0.0);
+            Ka = vec3(0.0, 0.0, 0.0);
+            q = 0.0;
+        } else if (object_id == CUBE) {
+            Kd0 = texture(TextureImage0, texCoords).rgb;
+            Kd1 = texture(TextureImage1, texCoords).rgb;
+            Ks = vec3(0.0, 0.0, 0.0);
+            Ka = vec3(0.0, 0.0, 0.0);
+            q = 0.0;
+        } else if (object_id == BUNNY) {
+            Kd0 = texture(TextureImage2, texCoords).rgb; // Wood texture
+            Kd1 = vec3(0.0, 0.0, 0.0);
+            Ks = vec3(0.1, 0.1, 0.1); // Low specular for wood
+            Ka = vec3(0.0, 0.0, 0.0); // Ambient color similar to wood
+            q = 10.0; // Subtle shininess
+        } else if (object_id == PLANE) {
+            Kd0 = texture(TextureImage0, texCoords).rgb;
+            Kd1 = texture(TextureImage1, texCoords).rgb;
+            Ks = vec3(0.0, 0.0, 0.0);
+            Ka = vec3(0.0, 0.0, 0.0);
+            q = 0.0;
+        }
+
+        // Cálculo da iluminação
+        color.rgb = computeLighting(n, l, v, Kd0, Kd1, Ks, Ka, q, object_id);
+    }
 
     // Transparency and gamma correction
     color.a = 1.0;
