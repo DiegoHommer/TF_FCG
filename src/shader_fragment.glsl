@@ -24,6 +24,7 @@ uniform mat4 projection;
 #define BUNNY 2
 #define PLANE 3
 #define MADELINE  4
+#define COLLISION 5
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -156,5 +157,8 @@ void main()
     // Transparency and gamma correction
     color.a = 1.0;
     color.rgb = pow(color.rgb, vec3(1.0) / 2.2);
+    if (object_id == COLLISION)
+        color = vec4(0.0f,0.0f,0.0f,1.0f);
+
 }
 

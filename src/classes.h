@@ -19,12 +19,7 @@ struct Box
     float       height;
     float       width;
     float       length;
-};
-
-struct Sphere
-{
-    glm::vec4   position;
-    float       radius;
+    bool        status = true;
 };
 
 
