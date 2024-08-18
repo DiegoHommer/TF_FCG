@@ -318,10 +318,9 @@ int main()
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+    LoadTextureImage("../../data/tc-ice.jpg");      // TextureImage0
+    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage1
     LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage2
-    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage3
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cowmodel("../../data/cow.obj");
@@ -339,6 +338,10 @@ int main()
     ObjModel madelinemodel("../../data/madeline.obj");
     ComputeNormals(&madelinemodel);
     BuildTrianglesAndAddToVirtualScene(&madelinemodel);
+
+    ObjModel wingedstrberrymodel("../../data/winged_strawberry.obj");
+    ComputeNormals(&wingedstrberrymodel);
+    BuildTrianglesAndAddToVirtualScene(&wingedstrberrymodel);
 
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
@@ -429,62 +432,26 @@ int main()
         #define PLANE  3
         #define MADELINE  4
         #define COLLISION  5
+        #define WINGED_BERRY 6
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
-        for (int i = 1; i<= 2; i++)
+        for (int i = 1; i<= 1; i++)
         {
-            // Cada cópia do cubo possui uma matriz de modelagem independente,
-            // já que cada cópia estará em uma posição (rotação, escala, ...)
-            // diferente em relação ao espaço global (World Coordinates). Veja
-            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
             glm::mat4 model;
 
             if (i == 1)
             {
-                // A primeira cópia do cubo não sofrerá nenhuma transformação
-                // de modelagem. Portanto, sua matriz "model" é a identidade, e
-                // suas coordenadas no espaço global (World Coordinates) serão
-                // *exatamente iguais* a suas coordenadas no espaço do modelo
-                // (Model Coordinates).
                 model = Matrix_Identity();
                 model *= Matrix_Translate(cube.position.x, cube.position.y, cube.position.z);
-                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
+                model *= Matrix_Scale(cube.width/2, cube.height/2 , cube.length/2);
             }
-            else if (i == 2) {
-                if (look_at) {
-                    // Modelo do personagem
-                    model = Matrix_Identity();
-                    model *= Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
-                    model *= Matrix_Scale(madeline_collision.width*2, madeline_collision.height*2, madeline_collision.length*2); // PRIMEIRO escala
-                }
-            }
-
-            // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
-            // arquivo "shader_vertex.glsl", onde esta é efetivamente
-            // aplicada em todos os pontos.
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
             glUniform1i(render_as_red_uniform, false);
 
-            // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
-            // VAO como triângulos, formando as faces do cubo. Esta
-            // renderização irá executar o Vertex Shader definido no arquivo
-            // "shader_vertex.glsl", e o mesmo irá utilizar as matrizes
-            // "model", "view" e "projection" definidas acima e já enviadas
-            // para a placa de vídeo (GPU).
-            //
-            // Veja a definição de g_VirtualScene["cube_faces"] dentro da
-            // função BuildTriangles(), e veja a documentação da função
-            // glDrawElements() em http://docs.gl/gl3/glDrawElements.
-
-            glUniform1i(render_as_red_uniform, CUBE);
-
             if (cube.status) {
-                glDrawElements(
-                    g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
-                    g_VirtualScene["cube_faces"].num_indices,
-                    GL_UNSIGNED_INT,
-                    (void*)g_VirtualScene["cube_faces"].first_index
-                );
+                glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+                glUniform1i(g_object_id_uniform, WINGED_BERRY);
+                DrawVirtualObject("the_winged_strawberry");
             }
         }
 

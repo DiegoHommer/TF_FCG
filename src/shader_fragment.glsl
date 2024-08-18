@@ -29,6 +29,7 @@ uniform mat4 projection;
 #define PLANE 3
 #define MADELINE  4
 #define COLLISION 5
+#define WINGED_BERRY 6
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -39,7 +40,6 @@ uniform vec4 bbox_max;
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
 uniform sampler2D TextureImage2;
-uniform sampler2D TextureImage3;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec4 color;
@@ -119,11 +119,11 @@ void main()
 
     // Texture coordinates calculation
     vec2 texCoords;
-    if (object_id == CUBE || object_id == PLANE || object_id == MADELINE) {
+    if (object_id == CUBE || object_id == MADELINE || object_id == WINGED_BERRY) {
         texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
-    } else if (object_id == BUNNY) {
+    } else if (object_id == PLANE) {
         texCoords = texcoords;
     }
 
@@ -139,11 +139,11 @@ void main()
     }else {
         // Phong Shading Interpolation (para cada fragmento)
 
-        if (object_id == MADELINE) {
-            Kd0 = texture(TextureImage3, texCoords).rgb;
+        if (object_id == MADELINE || object_id == WINGED_BERRY) {
+            Kd0 = texture(TextureImage1, texCoords).rgb;
             Kd1 = vec3(0.0, 0.0, 0.0);
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.0, 0.0, 0.0);
+            Ka = vec3(0.1, 0.1, 0.1);
             q = 0.0;
         } else if (object_id == CUBE) {
             Kd0 = texture(TextureImage0, texCoords).rgb;
@@ -154,15 +154,15 @@ void main()
         } else if (object_id == BUNNY) {
             Kd0 = texture(TextureImage2, texCoords).rgb; // Wood texture
             Kd1 = vec3(0.0, 0.0, 0.0);
-            Ks = vec3(0.1, 0.1, 0.1); // Low specular for wood
-            Ka = vec3(0.0, 0.0, 0.0); // Ambient color similar to wood
+            Ks = vec3(0.1, 0.1, 0.1); 
+            Ka = vec3(0.0, 0.0, 0.0); 
             q = 10.0; // Subtle shininess
-        } else if (object_id == PLANE) {
+        }  else if (object_id == PLANE) {
             Kd0 = texture(TextureImage0, texCoords).rgb;
-            Kd1 = texture(TextureImage1, texCoords).rgb;
-            Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.0, 0.0, 0.0);
-            q = 0.0;
+            Kd1 = vec3(0.0, 0.0, 0.0);
+            vec3 Ks = vec3(0.9, 0.9, 1.0);
+            vec3 Ka = vec3(0.05, 0.05, 0.1); 
+            float q = 128.0; 
         }
 
         // Cálculo da iluminação

@@ -24,7 +24,7 @@ uniform vec4 bbox_max;
 uniform int object_id;
 
 // Variáveis para acesso das imagens de textura
-uniform sampler2D TextureImage3;
+uniform sampler2D TextureImage1;
 
 // Atributos de vértice que serão gerados como saída ("out") pelo Vertex Shader.
 // ** Estes serão interpolados pelo rasterizador! ** gerando, assim, valores
@@ -79,7 +79,6 @@ void main()
     position_model = model_coefficients;
     normal = inverse(transpose(model)) * normal_coefficients;
     normal.w = 0.0;
-    texcoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
 
     vec4 n = normalize(normal);
     vec4 l = normalize(vec4(1.0, 1.0, 0.0, 0.0));
@@ -89,12 +88,14 @@ void main()
     float q;
 
     if(object_id == COW){
-        Kd0 = texture(TextureImage3, texcoords).rgb;
+        texcoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
+        Kd0 = texture(TextureImage1, texcoords).rgb;
         Kd1 = vec3(0.0, 0.0, 0.0);
         Ka = vec3(0.0, 0.0, 0.0);
 
         gouraud_color = computeLambertLighting(n, l, Kd0, Kd1, Ka);
     }else{
+        texcoords = texture_coefficients;
         gouraud_color = vec3(0.0,0.0,0.0);
     }
 }
