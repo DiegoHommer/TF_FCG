@@ -158,6 +158,7 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 // Funções auxiliares
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
+void BezierMovement(Box* strawberry, float t);
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -229,6 +230,8 @@ bool back = false;
 bool left = false;
 bool right = false;
 bool dash = false;
+bool bezier = false;
+float t = 0.0;
 
 Character Madeline;
 
@@ -350,7 +353,7 @@ int main()
     GLint model_uniform = glGetUniformLocation(g_GpuProgramID, "model"); // Variável da matriz "model"
     GLint view_uniform = glGetUniformLocation(g_GpuProgramID, "view"); // Variável da matriz "view" em shader_vertex.glsl
     GLint projection_uniform = glGetUniformLocation(g_GpuProgramID, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
-    GLint render_as_black_uniform = glGetUniformLocation(g_GpuProgramID, "render_as_black"); // Variável booleana em shader_vertex.glsl
+    GLint render_as_red_uniform = glGetUniformLocation(g_GpuProgramID, "render_as_red"); // Variável booleana em shader_vertex.glsl
 
     // Habilitamos o Z-buffer. Veja slides 104-116 do documento Aula_09_Projecoes.pdf.
     glEnable(GL_DEPTH_TEST);
@@ -369,13 +372,12 @@ int main()
     Box madeline_collision;
     madeline_collision.position = Madeline.position;
     madeline_collision.height = 0.5;
-    madeline_collision.width = 0.5;
-    madeline_collision.length = 0.5;
+    madeline_collision.width = 0.25;
+    madeline_collision.length = 0.25;
 
     plane.position = glm::vec4 (0.0f,2.5f,0.0f,1.0f);
-    plane.direction = normalize(glm::vec4 (0.0f,1.0f,1.0f,0.0f));
-    plane.height = 1.77;
-    plane.width = 1.77;
+    plane.height = 0.0;
+    plane.width = 2.55;
     plane.length = 2.5;
 
     wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
@@ -384,9 +386,9 @@ int main()
     wall.width = 0;
     wall.length = 2.5;
 
-    cube.position = glm::vec4 (1.0f, 6.0f, 2.0f, 1.0f);
-    cube.height = 0.25;
-    cube.width = 1.00;
+    cube.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
+    cube.height = 0.4;
+    cube.width = 0.25;
     cube.length = 0.25;
 
     // Variáveis para calcular delta_t inicializadas
@@ -421,15 +423,15 @@ int main()
 
         // Recuperamos o número de segundos que passou desde o último frame
         delta_t = (float)glfwGetTime() - old_seconds;
-
         #define CUBE 0
         #define COW 1
         #define BUNNY 2
         #define PLANE  3
         #define MADELINE  4
+        #define COLLISION  5
 
         // Vamos desenhar 2 instâncias (cópias) do cubo
-        for (int i = 1; i<= 1; i++)
+        for (int i = 1; i<= 2; i++)
         {
             // Cada cópia do cubo possui uma matriz de modelagem independente,
             // já que cada cópia estará em uma posição (rotação, escala, ...)
@@ -445,15 +447,15 @@ int main()
                 // *exatamente iguais* a suas coordenadas no espaço do modelo
                 // (Model Coordinates).
                 model = Matrix_Identity();
-                model *= Matrix_Translate(1.0f, 6.0f, 2.0f);
+                model *= Matrix_Translate(cube.position.x, cube.position.y, cube.position.z);
                 model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
             }
             else if (i == 2) {
                 if (look_at) {
                     // Modelo do personagem
                     model = Matrix_Identity();
-                    model *= Matrix_Scale(1.0f, 1.0f, 1.0f); // PRIMEIRO escala
                     model *= Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z);
+                    model *= Matrix_Scale(madeline_collision.width*2, madeline_collision.height*2, madeline_collision.length*2); // PRIMEIRO escala
                 }
             }
 
@@ -461,7 +463,7 @@ int main()
             // arquivo "shader_vertex.glsl", onde esta é efetivamente
             // aplicada em todos os pontos.
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-            glUniform1i(render_as_black_uniform, false);
+            glUniform1i(render_as_red_uniform, false);
 
             // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
             // VAO como triângulos, formando as faces do cubo. Esta
@@ -474,29 +476,22 @@ int main()
             // função BuildTriangles(), e veja a documentação da função
             // glDrawElements() em http://docs.gl/gl3/glDrawElements.
 
-            glUniform1i(render_as_black_uniform, CUBE);
-            glDrawElements(
-                g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
-                g_VirtualScene["cube_faces"].num_indices,
-                GL_UNSIGNED_INT,
-                (void*)g_VirtualScene["cube_faces"].first_index
-            );
-            glLineWidth(4.0f);
-            glUniform1i(render_as_black_uniform, true);
+            glUniform1i(render_as_red_uniform, CUBE);
 
-            // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
-            // VAO como linhas, formando as arestas pretas do cubo. Veja a
-            // definição de g_VirtualScene["cube_edges"] dentro da função
-            // BuildTriangles(), e veja a documentação da função
-            // glDrawElements() em http://docs.gl/gl3/glDrawElements.
-            glDrawElements(
-                g_VirtualScene["cube_edges"].rendering_mode,
-                g_VirtualScene["cube_edges"].num_indices,
-                GL_UNSIGNED_INT,
-                (void*)g_VirtualScene["cube_edges"].first_index
-            );
+            if (cube.status) {
+                glDrawElements(
+                    g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
+                    g_VirtualScene["cube_faces"].num_indices,
+                    GL_UNSIGNED_INT,
+                    (void*)g_VirtualScene["cube_faces"].first_index
+                );
+            }
         }
 
+        if (bezier && t<=1){
+            t+=delta_t;
+            BezierMovement(&cube, t);
+        }
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
         CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
@@ -513,7 +508,7 @@ int main()
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane = -10.0f; // Posição do "far plane"
+        float farplane = -20.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -563,7 +558,6 @@ int main()
 
         // Desenhamos o plano do chão
         model = Matrix_Translate(0.0f,2.5f,0.0f) *
-        Matrix_Rotate_X(M_PI/4) *
         Matrix_Scale(2.5f,1.0f,2.5f);
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, PLANE);
@@ -577,11 +571,27 @@ int main()
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
 
-        model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
-        Matrix_Scale(0.005f, 0.005f, 0.005f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, MADELINE);
-        DrawVirtualObject("madeline");
+        if (look_at){
+            glm::vec4 w = (camera_view_vector);
+            w.y = 0;
+            w = normalize(w);
+            glm::vec4 normal = glm::vec4 (0.0, 0.0, 1.0, 0.0);
+
+            float cos_theta = dotproduct(w, normal)/(norm(w)*norm(normal));
+            float theta = acos(cos_theta);
+            if (w.x < 0)
+                theta = - acos(cos_theta);
+
+            printf("%.2f\n",cos_theta);
+
+            model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
+            Matrix_Rotate_Y(theta) *
+            Matrix_Translate(0.22, -0.5, 0.15)*
+            Matrix_Scale(0.005f, 0.005f, 0.005f);
+            glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, MADELINE);
+            DrawVirtualObject("madeline");
+        }
 
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
@@ -695,7 +705,8 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
 
     character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
     character->direction = CubePlaneCollision(*character_collision, character->direction, wall);
-    character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
+    if (CubeCubeCollision(*character_collision, cube, character->direction) != character->direction)
+        cube.status = false;
     character->position += character->direction;
 
     if (!look_at){
@@ -703,6 +714,21 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     }
 }
 
+void BezierMovement(Box* strawberry, float t){
+    glm::vec4 p[4];
+    glm::vec4 c[3];
+    p[0] = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
+    p[1] = glm::vec4 (-2.0f, 6.0f, -1.0f, 1.0f);
+    p[2] = glm::vec4 (-1.0f, 12.0f, -3.0f, 1.0f);
+    p[3] = glm::vec4 (3.0f, 17.0f, -1.0f, 1.0f);
+    for (int i = 0; i < 3; i++){
+        c[i] = p[i] + t*(p[(i+1)]-p[i]);
+    }
+    glm::vec4 c123 = c[0] + t*(c[1]-c[0]);
+    glm::vec4 c234 = c[1] + t*(c[2]-c[1]);
+    glm::vec4 ct = c123 + t*(c234-c123);
+    strawberry->position = ct;
+}
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)
 {
@@ -1490,6 +1516,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         if (action == GLFW_PRESS && Madeline.dash <= 0) {
             // C pressionado
             dash = true;
+            bezier = true;
         }
     }
 
