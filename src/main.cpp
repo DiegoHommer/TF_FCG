@@ -237,7 +237,7 @@ Character Madeline;
 
 Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.0, 2.5, 2.5),
                 Box(glm::vec4 (2.5f,5.0f,0.0f,1.0f), glm::vec4 (1.0f,0.0f,0.0f,0.0f), 2.5, 0.0, 2.5),
-                Box(glm::vec4 (0.0f,5.0f,2.5f,1.0f), glm::vec4 (0.0f,0.0f,-1.0f,0.0f), 2.5, 2.5, 0.0)};
+                Box(glm::vec4 (0.0f,5.0f,2.5f,1.0f), glm::vec4 (0.0f,0.0f,1.0f,0.0f), 2.5, 2.5, 0.0)};
 
 Box cubes[] =   {Box(glm::vec4 (-4.0f, 2.5f, -5.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0)};
 
@@ -559,9 +559,6 @@ int main()
                     phi = acos(cos_phi);
                 }
 
-                printf("%.2f\n", theta);
-                printf("%.2f\n\n", phi);
-
                 model = Matrix_Translate(plane.position.x,plane.position.y,plane.position.z)
                   *  Matrix_Scale(plane.width, plane.height, plane.length)
                   *  Matrix_Rotate_X(phi)
@@ -691,7 +688,7 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     }
 
     if (dash){
-        character->dash = 4;
+        character->dash_timer = 4;
         character->gravity = 0;
         character->velocity = 15;
         character->direction_dash = character->direction;
@@ -700,8 +697,8 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
             character->direction_dash = (*camera_view_vector)/norm(*camera_view_vector);
         dash = false;
     }
-    else if (character->dash >= 0) {
-        character->dash -= 12 * delta_t;
+    else if (character->dash_timer >= 0) {
+        character->dash_timer -= 12 * delta_t;
         character->direction = character->direction_dash;
     }
     else {
@@ -716,8 +713,13 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     character->direction = character->direction * character->velocity * delta_t;
     character->direction.y = character->gravity  * delta_t;
 
-    if (character->position.y <= -5.0)
+    if (character->position.y <= -5.0){
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
+        bezier = false;
+        strawberry.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
+        strawberry.status = true;
+        t = 0;
+    }
 
     for (Box plane : planes)
         character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
@@ -730,8 +732,13 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
 
     character->position += character->direction;
 
-    if (character->direction.y == 0.0)
+    if (character->direction.y == 0.0){
+        if (character->gravity<0){
+            character->dash_counter = 1;
+            character->jump_counter = 1;
+        }
         character->gravity = 0.0;
+    }
 
     if (!look_at){
     }
@@ -1545,16 +1552,18 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     }
 
     if (key == GLFW_KEY_C) {
-        if (action == GLFW_PRESS && Madeline.dash <= 0) {
+        if (action == GLFW_PRESS && Madeline.dash_counter) {
             // C pressionado
             dash = true;
+            Madeline.dash_counter -= 1;
             bezier = true;
         }
     }
 
     if (key == GLFW_KEY_SPACE) {
-        if (action == GLFW_PRESS ) {
+        if (action == GLFW_PRESS && Madeline.jump_counter) {
             // Space pressionado
+            Madeline.jump_counter-=1;
             Madeline.gravity = 7;
         }
     }

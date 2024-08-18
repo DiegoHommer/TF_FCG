@@ -7,8 +7,10 @@ struct Character
     glm::vec4   position;
     glm::vec4   direction = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
     glm::vec4   direction_dash = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
-    float       dash = 0;
+    float       dash_timer = 0;
+    int         dash_counter = 1;
     float       gravity = -4.0;
+    int         jump_counter = 0;
     float       velocity = 3.0;
 };
 
