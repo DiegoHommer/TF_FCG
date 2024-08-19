@@ -240,14 +240,16 @@ bool right = false;
 bool dash = false;
 bool bezier = false;
 float t = 0.0;
-int level = 1;
+int level = 2;
+
+glm::vec4 origin = glm::vec4(0.0f, 4.0f, 0.0f, 1.0f);
 
 Character Madeline;
 
 // Variável para alternar entre câmera livre e câmera look_at
 bool look_at = false;
 bool switch_camera_type = false;
-glm::vec4 strawberry_base = strawberries[0].position;
+glm::vec4 strawberry_base = strawberries[level-1].position;
 
 int main()
 {
@@ -373,8 +375,8 @@ int main()
     glm::mat4 the_model;
     glm::mat4 the_view;
 
-    glm::vec4 camera_position_c = glm::vec4(1.0f, 8.0f, 1.0f, 1.0f); // Ponto "c", centro da câmera inicializado em um ponto definido
-    Madeline.position = camera_position_c; // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+    glm::vec4 camera_position_c = origin; // Ponto "c", centro da câmera inicializado em um ponto definido
+    Madeline.position = origin; // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
@@ -403,6 +405,7 @@ int main()
         DrawPlanes();
         DrawMadeline(camera_view_vector);
         DrawBunny();
+        DrawCow();
         DrawStrawberry(delta_t);
 
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
@@ -508,6 +511,16 @@ void DrawBunny(){
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, BUNNY);
         DrawVirtualObject("the_bunny");
+    }
+}
+
+void DrawCow(){
+    if (cow.status && level == 2){
+        glm::mat4 model = Matrix_Identity();
+        model = Matrix_Translate(cow.position.x,cow.position.y,cow.position.z);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, COW);
+        DrawVirtualObject("the_cow");
     }
 }
 
@@ -647,14 +660,14 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     character->direction.y = character->gravity  * delta_t;
 
     if (character->position.y <= -5.0){
-        character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
+        character->position = origin;
         bezier = false;
         strawberries[level-1].position = strawberry_base;
         strawberries[level-1].status = true;
         t = 0;
     }
     if (CubeCubeCollision(*character_collision, bunny, character->direction) != character->direction){
-        character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
+        character->position = origin;
         level++;
         bezier = false;
         strawberries[level-1].position = strawberry_base;
