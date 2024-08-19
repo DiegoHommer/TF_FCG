@@ -656,6 +656,8 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
 
     character_collision->position = character->position;
 
+    if (character->direction != glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f))
+        character->direction = normalize(character->direction);
     character->direction = character->direction * character->velocity * delta_t;
     character->direction.y = character->gravity  * delta_t;
 
