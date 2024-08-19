@@ -45,7 +45,7 @@
 
 #define M_PI   3.14159265358979323846
 #define VELOCITY 2
-#define GRAVITY -4.0
+#define GRAVITY -5.0
 
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
@@ -160,10 +160,11 @@ void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector,
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void BezierMovement(Box* strawberry, float t, float delta_t);
+void LoadTextures();
 void DrawCubes();
 void DrawPlanes();
 void DrawMadeline(glm::vec4 camera_view_vector);
-void DrawStrawberry();
+void DrawStrawberry(float delta_t);
 void DrawCow();
 void DrawBunny();
 
@@ -239,34 +240,18 @@ bool right = false;
 bool dash = false;
 bool bezier = false;
 float t = 0.0;
+int level = 0;
 
 Character Madeline;
-
-Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 1.0, 2.5, 2.5)};
-
-Box cubes[] =   {Box(glm::vec4 (0.0f, 2.5f, -5.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0),
-                 Box(glm::vec4 (-2.0f, 3.0f, -8.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0),
-                 Box(glm::vec4 (3.0f, 5.0f, -15.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0)};
-
-Box strawberry = Box(glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.4, 0.25, 0.25);
-
-//wall.position = glm::vec4 (2.5f,5.0f,0.0f,1.0f);
-//wall.direction = glm::vec4 (1.0f,0.0f,0.0f,0.0f);
-//wall.height = 2.5;
-//wall.width = 0;
-//wall.length = 2.5;
-//
-//cube.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
-//cube.height = 0.4;
-//cube.width = 0.25;
-//cube.length = 0.25;
 
 // Variável para alternar entre câmera livre e câmera look_at
 bool look_at = false;
 bool switch_camera_type = false;
+glm::vec4 strawberry_base = strawberry1.position;
 
 int main()
 {
+
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -337,11 +322,7 @@ int main()
     // para renderização. Veja slides 180-200 do documento Aula_03_Rendering_Pipeline_Grafico.pdf.
     //
     LoadShadersFromFiles();
-
-    // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-ice.jpeg");      // TextureImage0
-    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage1
-    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage2
+    LoadTextures();
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel cubemodel("../../data/cube.obj");
@@ -363,6 +344,10 @@ int main()
     ObjModel madelinemodel("../../data/madeline.obj");
     ComputeNormals(&madelinemodel);
     BuildTrianglesAndAddToVirtualScene(&madelinemodel);
+
+    ObjModel wgdberrymodel("../../data/winged-strawberry.obj");
+    ComputeNormals(&wgdberrymodel);
+    BuildTrianglesAndAddToVirtualScene(&wgdberrymodel);
 
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
@@ -412,20 +397,22 @@ int main()
         #define COW 2
         #define BUNNY 3
         #define MADELINE 4
+        #define WINGED_BERRY 5
 
         DrawCubes();
         DrawPlanes();
         DrawMadeline(camera_view_vector);
-       
-        
+        DrawBunny();
+        DrawStrawberry(delta_t);
+
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
         CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
         // Salva número de segundos que passou para fazer o frame refresh
         old_seconds = (float)glfwGetTime();
-        
+
         CameraProjection(camera_position_c, camera_view_vector, camera_up_vector);
-        
+
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
         glfwSwapBuffers(window);
@@ -438,7 +425,7 @@ int main()
 }
 
 void DrawCubes() {
-    for (Box cube : cubes) {
+    for (Box cube : cubes1) {
 
         glm::mat4 model = Matrix_Identity();
 
@@ -454,7 +441,7 @@ void DrawCubes() {
 }
 
 void DrawPlanes() {
-    for (Box plane : planes) {
+    for (Box plane : planes1) {
         glm::mat4 model = Matrix_Identity();
 
         if (plane.status) {
@@ -505,12 +492,40 @@ void DrawMadeline(glm::vec4 camera_view_vector) {
         model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z) *
             Matrix_Rotate_Y(theta) *
             Matrix_Translate(0.22, -0.5, 0.15) *
-            Matrix_Scale(0.005f, 0.005f, 0.005f);
+            Matrix_Scale(0.5f, 0.5f, 0.5f);
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, MADELINE);
         DrawVirtualObject("madeline");
     }
 
+}
+
+void DrawBunny(){
+    Box bunny = bunny1;
+    if (bunny.status){
+        glm::mat4 model = Matrix_Identity();
+        model = Matrix_Translate(bunny.position.x,bunny.position.y,bunny.position.z) *
+                Matrix_Scale(0.5f,0.5f,0.5f);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, BUNNY);
+        DrawVirtualObject("the_bunny");
+    }
+}
+
+void DrawStrawberry(float delta_t){
+    if (strawberry1.status){
+        if (bezier && t<=1){
+            t+=delta_t;
+            BezierMovement(&strawberry1, t, delta_t);
+        } else if (t>1)
+            t = 0;
+        glm::mat4 model = Matrix_Identity()
+            * Matrix_Translate(strawberry1.position.x, strawberry1.position.y, strawberry1.position.z)
+            * Matrix_Scale(10.0,10.0,10.0);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, WINGED_BERRY);
+        DrawVirtualObject("the_winged_strawberry");
+    }
 }
 
 void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector, glm::vec4 camera_up_vector) {
@@ -635,19 +650,22 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     if (character->position.y <= -5.0){
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
         bezier = false;
-        strawberry.position = glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f);
-        strawberry.status = true;
+        strawberry1.position = strawberry_base;
+        strawberry1.status = true;
         t = 0;
     }
+    if (CubeCubeCollision(*character_collision, bunny1, character->direction) != character->direction){
+        character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
+    }
 
-    for (Box plane : planes)
+    for (Box plane : planes1)
         character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
 
-    for (Box cube : cubes)
+    for (Box cube : cubes1)
         character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
 
-    if (CubeCubeCollision(*character_collision, strawberry, character->direction) != character->direction)
-        strawberry.status = false;
+    if (CubeCubeCollision(*character_collision, strawberry1, character->direction) != character->direction)
+        strawberry1.status = false;
 
     character->position += character->direction;
 
@@ -668,11 +686,11 @@ void BezierMovement(Box* strawberry, float t, float delta_t){
     glm::vec4 c[4];
     glm::vec4 c2[3];
     glm::vec4 c3[2];
-    p[0] = glm::vec4 (-1.0f, 0.0f, -1.0f, 1.0f);
-    p[1] = glm::vec4 (-3.0f, 0.0f, -3.0f, 1.0f);
-    p[2] = glm::vec4 (-1.0f, 0.0f, -5.0f, 1.0f);
-    p[3] = glm::vec4 (1.0f, 0.0f, -3.0f, 1.0f);
-    p[4] = glm::vec4 (-1.0f, 0.0f, -1.0f, 1.0f);
+    p[0] = strawberry_base + glm::vec4 (0.0f, 0.0f, 2.0f, 1.0f);
+    p[1] = strawberry_base + glm::vec4 (-2.0f, 0.0f, 0.0f, 1.0f);
+    p[2] = strawberry_base + glm::vec4 (0.0f, 0.0f, -2.0f, 1.0f);
+    p[3] = strawberry_base + glm::vec4 (2.0f, 0.0f, 0.0f, 1.0f);
+    p[4] = strawberry_base + glm::vec4 (0.0f, 0.0f, 2.0f, 1.0f);
     for (int i = 0; i < 4; i++){
         c[i] = p[i] + t*(p[(i+1)]-p[i]);
     }
@@ -686,6 +704,13 @@ void BezierMovement(Box* strawberry, float t, float delta_t){
     float y = strawberry->position.y+delta_t*4;
     strawberry->position = ct;
     strawberry->position.y = y;
+}
+
+void LoadTextures() {
+    LoadTextureImage("../../data/tc-ice.jpeg");      // TextureImage0
+    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage1
+    LoadTextureImage("../../data/madeline.png"); // TextureImage2
+    LoadTextureImage("../../data/winged-strawberry.png"); // TextureImage3
 }
 
 void LoadTextureImage(const char* filename)

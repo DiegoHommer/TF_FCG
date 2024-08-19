@@ -22,7 +22,8 @@ struct Box
     float       width;
     float       length;
     bool        status = true;
-    Box (glm::vec4 p, glm::vec4 d, float h, float w, float l){
+    int         level;
+    Box (glm::vec4 p, glm::vec4 d, float h, float w, float l, int level){
         position = p;
         direction = d;
         height = h;
@@ -33,3 +34,17 @@ struct Box
 };
 
 
+Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 1.0, 2.5, 2.5, 0),
+                Box(glm::vec4 (0.0f,8.0f,-28.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 1.0, 2.0, 2.0, 0)};
+
+Box cubes[] =   {Box(glm::vec4 (0.0f, 3.0f, -6.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0, 1),
+                 Box(glm::vec4 (-2.0f, 4.0f, -10.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0, 1),
+                 Box(glm::vec4 (1.0f, 5.0f, -14.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0, 1),
+                 Box(glm::vec4 (2.0f, 6.5f, -16.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0, 1),
+                 Box(glm::vec4 (0.0f, 8.0f, -17.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0, 1),
+                 Box(glm::vec4 (0.0f,8.4f,-28.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.5, 0.25, 0.25, 1),
+                 Box(glm::vec4 (0.0f,9.0f,-28.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 0.5, 0.5, 1)};
+
+Box strawberries = Box(glm::vec4 (0.0f, 5.0f, -26.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.25, 0.25, 0.25);
+
+Box bunnies =      Box(glm::vec4 (0.0f,9.5f,-28.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.35, 0.35, 0.35);
