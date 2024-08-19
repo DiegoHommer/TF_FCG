@@ -670,6 +670,7 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
         character->position = origin;
         level++;
         bezier = false;
+        strawberry_base = strawberries[level-1].position;
         strawberries[level-1].position = strawberry_base;
         strawberries[level-1].status = true;
         t = 0;
