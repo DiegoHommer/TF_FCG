@@ -88,35 +88,35 @@ vec2 computePlanarTextureCoords(vec4 position_model, vec4 bbox_min, vec4 bbox_ma
 
 // Funcoes de iluminação (COM AUXILIO DE CHAT GPT)
 vec3 computeLambertLighting(vec4 n, vec4 l, vec3 Kd, vec3 Ka) {
-    // Calculo do Termo difuso (Lambert)
-    float lambert = max(0.0, dot(n, l));
-    vec3 I = vec3(1.0,1.0,1.0);
-    vec3 diffuse = Kd * I * lambert;
-
     // Calculo do Termo ambiente
     vec3 Ia = vec3(0.2,0.2,0.2);
     vec3 ambient = Ka * Ia;
 
-    return diffuse + ambient;
+    // Calculo do Termo difuso (Lambert)
+    float lambert = max(0.0, dot(n, l));
+    vec3 I = vec3(1.0,1.0,1.0);
+    vec3 diffuse = Kd * I * (lambert + ambient);
+
+    return diffuse;
 }
 
 vec3 computeBlinnPhongLighting(vec4 n, vec4 l, vec4 v, vec3 Kd, vec3 Ka, vec3 Ks, float q) {
+    // Calculo do Termo ambiente
+    vec3 Ia = vec3(0.5,0.5,0.5);
+    vec3 ambient = Ka * Ia;
+
     // Calculo do Termo difuso (Lambert)
     float lambert = max(0.0, dot(n, l));
     vec3 I = vec3(1.0,1.0,1.0);
+    vec3 diffuse = Kd * I * (lambert + ambient);
 
-    vec3 diffuse = Kd * I * lambert;
-
-    // Calculo do Termo ambiente
-    vec3 Ia = vec3(0.2,0.2,0.2);
-    vec3 ambient = Ka * Ia;
 
     // Calulo do Termo Especular (Blinn-Phong)
     vec4 h = normalize(v + l);
     float spec = pow(max(dot(n, h), 0.0), q);
     vec3 specular = Ks * spec;
 
-    return ambient + diffuse + specular;
+    return diffuse + specular;
 }
 
 // Aqui definimos o modelo de iluminacao usado para cada objeto
@@ -137,7 +137,7 @@ void main()
     // Fragment properties
     vec4 p = position_world;
     vec4 n = normalize(normal);
-    vec4 l = normalize(vec4(2.0, 1.0, 3.0, 0.0));
+    vec4 l = normalize(vec4(1.0, 1.0, 2.0, 0.0));
     vec4 v = normalize(camera_position - p);
 
     // Texture coordinates calculation
@@ -146,9 +146,7 @@ void main()
         texCoords = computeCubeTextureCoords(position_model, bbox_min, bbox_max);
     } else if (object_id == BUNNY) {
         texCoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
-    }else if (object_id == CUBE){
-        texCoords = computeSphericalTextureCoords(position_model, bbox_min, bbox_max);
-    } else if (object_id == PLANE || object_id == WINGED_BERRY || object_id == MADELINE) {
+    }else if (object_id == PLANE || object_id == WINGED_BERRY || object_id == MADELINE) {
         texCoords = texcoords;
     }
 
@@ -167,17 +165,17 @@ void main()
         if (object_id == MADELINE) {
             Kd = texture(TextureImage2, texCoords).rgb;
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.1, 0.1, 0.1);
+            Ka = vec3(0.3, 0.3, 0.3);
             q = 0.0;
         } else if (object_id == CUBE) {
             Kd = texture(TextureImage0, texCoords).rgb;
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.0, 0.0, 0.0);
+            Ka = vec3(0.5, 0.5, 0.5);
             q = 0.0;
         } else if (object_id == BUNNY) {
             Kd = texture(TextureImage1, texCoords).rgb; 
             Ks = vec3(0.1, 0.1, 0.1); 
-            Ka = vec3(0.0, 0.0, 0.0); 
+            Ka = vec3(0.1, 0.1, 0.1); 
             q = 10.0; 
         }  else if (object_id == PLANE) {
             Kd = texture(TextureImage0, texCoords).rgb; 

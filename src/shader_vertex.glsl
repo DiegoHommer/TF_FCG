@@ -24,7 +24,7 @@ uniform vec4 bbox_max;
 uniform int object_id;
 
 // Variáveis para acesso das imagens de textura
-uniform sampler2D TextureImage2;
+uniform sampler2D TextureImage1;
 
 // Atributos de vértice que serão gerados como saída ("out") pelo Vertex Shader.
 // ** Estes serão interpolados pelo rasterizador! ** gerando, assim, valores
@@ -81,7 +81,7 @@ void main()
     normal.w = 0.0;
 
     vec4 n = normalize(normal);
-    vec4 l = normalize(vec4(1.0, 1.0, 0.0, 0.0));
+    vec4 l = normalize(vec4(2.0, 1.0, 2.0, 0.0));
 
     // Mapeamento de textura e propriedades do objeto
     vec3 Kd0, Kd1, Ka, Ks;
@@ -89,7 +89,7 @@ void main()
 
     if(object_id == COW){
         texcoords = computePlanarTextureCoords(position_model, bbox_min, bbox_max);
-        Kd0 = texture(TextureImage2, texcoords).rgb;
+        Kd0 = texture(TextureImage1, texcoords).rgb;
         Kd1 = vec3(0.0, 0.0, 0.0);
         Ka = vec3(0.0, 0.0, 0.0);
 

@@ -240,7 +240,7 @@ bool right = false;
 bool dash = false;
 bool bezier = false;
 float t = 0.0;
-int level = 2;
+int level = 1;
 
 glm::vec4 origin = glm::vec4(0.0f, 4.0f, 0.0f, 1.0f);
 
