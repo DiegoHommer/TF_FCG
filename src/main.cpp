@@ -240,14 +240,14 @@ bool right = false;
 bool dash = false;
 bool bezier = false;
 float t = 0.0;
-int level = 0;
+int level = 1;
 
 Character Madeline;
 
 // Variável para alternar entre câmera livre e câmera look_at
 bool look_at = false;
 bool switch_camera_type = false;
-glm::vec4 strawberry_base = strawberry1.position;
+glm::vec4 strawberry_base = strawberries[0].position;
 
 int main()
 {
@@ -378,7 +378,7 @@ int main()
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-    Box madeline_collision (Madeline.position, glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), 0.5, 0.25, 0.25);
+    Box madeline_collision (Madeline.position, glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), 0.5, 0.25, 0.25, 0);
 
     // Variáveis para calcular delta_t inicializadas
     float old_seconds = (float)glfwGetTime();
@@ -425,11 +425,11 @@ int main()
 }
 
 void DrawCubes() {
-    for (Box cube : cubes1) {
+    for (Box cube : cubes) {
 
         glm::mat4 model = Matrix_Identity();
 
-        if (cube.status) {
+        if (cube.status && cube.level == level) {
             model = Matrix_Identity()
                 * Matrix_Translate(cube.position.x, cube.position.y, cube.position.z)
                 * Matrix_Scale(cube.width, cube.height, cube.length);
@@ -441,7 +441,7 @@ void DrawCubes() {
 }
 
 void DrawPlanes() {
-    for (Box plane : planes1) {
+    for (Box plane : planes) {
         glm::mat4 model = Matrix_Identity();
 
         if (plane.status) {
@@ -501,8 +501,7 @@ void DrawMadeline(glm::vec4 camera_view_vector) {
 }
 
 void DrawBunny(){
-    Box bunny = bunny1;
-    if (bunny.status){
+    if (bunny.status && level == 1){
         glm::mat4 model = Matrix_Identity();
         model = Matrix_Translate(bunny.position.x,bunny.position.y,bunny.position.z) *
                 Matrix_Scale(0.5f,0.5f,0.5f);
@@ -513,14 +512,14 @@ void DrawBunny(){
 }
 
 void DrawStrawberry(float delta_t){
-    if (strawberry1.status){
+    if (strawberries[level-1].status) {
         if (bezier && t<=1){
             t+=delta_t;
-            BezierMovement(&strawberry1, t, delta_t);
+            BezierMovement(&strawberries[level-1], t, delta_t);
         } else if (t>1)
             t = 0;
         glm::mat4 model = Matrix_Identity()
-            * Matrix_Translate(strawberry1.position.x, strawberry1.position.y, strawberry1.position.z)
+            * Matrix_Translate(strawberries[level-1].position.x, strawberries[level-1].position.y, strawberries[level-1].position.z)
             * Matrix_Scale(10.0,10.0,10.0);
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, WINGED_BERRY);
@@ -650,22 +649,29 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
     if (character->position.y <= -5.0){
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
         bezier = false;
-        strawberry1.position = strawberry_base;
-        strawberry1.status = true;
+        strawberries[level-1].position = strawberry_base;
+        strawberries[level-1].status = true;
         t = 0;
     }
-    if (CubeCubeCollision(*character_collision, bunny1, character->direction) != character->direction){
+    if (CubeCubeCollision(*character_collision, bunny, character->direction) != character->direction){
         character->position = glm::vec4 (1.0f, 4.0f, 1.0f, 1.0f);
+        level++;
+        bezier = false;
+        strawberries[level-1].position = strawberry_base;
+        strawberries[level-1].status = true;
+        t = 0;
     }
 
-    for (Box plane : planes1)
+    for (Box plane : planes)
         character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
 
-    for (Box cube : cubes1)
-        character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
+    for (Box cube : cubes){
+        if (cube.level == level)
+            character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
+    }
 
-    if (CubeCubeCollision(*character_collision, strawberry1, character->direction) != character->direction)
-        strawberry1.status = false;
+    if (CubeCubeCollision(*character_collision, strawberries[level-1], character->direction) != character->direction)
+        strawberries[level-1].status = false;
 
     character->position += character->direction;
 
