@@ -154,11 +154,18 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector, glm::vec4 camera_up_vector) ;
 
 // Funções auxiliares
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void BezierMovement(Box* strawberry, float t, float delta_t);
+void DrawCubes();
+void DrawPlanes();
+void DrawMadeline(glm::vec4 camera_view_vector);
+void DrawStrawberry();
+void DrawCow();
+void DrawBunny();
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -235,11 +242,11 @@ float t = 0.0;
 
 Character Madeline;
 
-Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.0, 2.5, 2.5),
-                Box(glm::vec4 (2.5f,5.0f,0.0f,1.0f), glm::vec4 (1.0f,0.0f,0.0f,0.0f), 2.5, 0.0, 2.5),
-                Box(glm::vec4 (0.0f,5.0f,2.5f,1.0f), glm::vec4 (0.0f,0.0f,1.0f,0.0f), 2.5, 2.5, 0.0)};
+Box planes[] =  {Box(glm::vec4 (0.0f,2.5f,0.0f,1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 1.0, 2.5, 2.5)};
 
-Box cubes[] =   {Box(glm::vec4 (-4.0f, 2.5f, -5.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0)};
+Box cubes[] =   {Box(glm::vec4 (0.0f, 2.5f, -5.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0),
+                 Box(glm::vec4 (-2.0f, 3.0f, -8.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0),
+                 Box(glm::vec4 (3.0f, 5.0f, -15.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.1, 1.0, 1.0)};
 
 Box strawberry = Box(glm::vec4 (-1.0f, 4.0f, -1.0f, 1.0f), glm::vec4 (0.0f, 1.0f, 0.0f, 0.0f), 0.4, 0.25, 0.25);
 
@@ -287,7 +294,7 @@ int main()
     // Criamos uma janela do sistema operacional, com 800 colunas e 800 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 800, "INF01047 - 00341793 - Diego Hommerding Amorim", NULL, NULL);
+    window = glfwCreateWindow(800, 800, "Celeste3D", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -332,12 +339,19 @@ int main()
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
-    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage2
-    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage3
+    LoadTextureImage("../../data/tc-ice.jpeg");      // TextureImage0
+    LoadTextureImage("../../data/tc-wood_surface.jpg"); // TextureImage1
+    LoadTextureImage("../../data/tc-metal.jpg"); // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
+    ObjModel cubemodel("../../data/cube.obj");
+    ComputeNormals(&cubemodel);
+    BuildTrianglesAndAddToVirtualScene(&cubemodel);
+
+    ObjModel planemodel("../../data/plane.obj");
+    ComputeNormals(&planemodel);
+    BuildTrianglesAndAddToVirtualScene(&planemodel);
+
     ObjModel cowmodel("../../data/cow.obj");
     ComputeNormals(&cowmodel);
     BuildTrianglesAndAddToVirtualScene(&cowmodel);
@@ -345,10 +359,6 @@ int main()
     ObjModel bunnymodel("../../data/bunny.obj");
     ComputeNormals(&bunnymodel);
     BuildTrianglesAndAddToVirtualScene(&bunnymodel);
-
-    ObjModel planemodel("../../data/plane.obj");
-    ComputeNormals(&planemodel);
-    BuildTrianglesAndAddToVirtualScene(&planemodel);
 
     ObjModel madelinemodel("../../data/madeline.obj");
     ComputeNormals(&madelinemodel);
@@ -389,222 +399,33 @@ int main()
     float old_seconds = (float)glfwGetTime();
     float delta_t = 0.0f;
 
-    // Ficamos em um loop infinito, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
-        // Aqui executamos as operações de renderização
-
-        // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
-        // definida como coeficientes RGBA: Red, Green, Blue, Alpha; isto é:
-        // Vermelho, Verde, Azul, Alpha (valor de transparência).
-        // Conversaremos sobre sistemas de cores nas aulas de Modelos de Iluminação.
-        //
-        //           R     G     B     A
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-        // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
-        // e também resetamos todos os pixels do Z-buffer (depth buffer).
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
-        // os shaders de vértice e fragmentos).
         glUseProgram(g_GpuProgramID);
-
-        // "Ligamos" o VAO. Informamos que queremos utilizar os atributos de
-        // vértices apontados pelo VAO criado pela função BuildTriangles(). Veja
-        // comentários detalhados dentro da definição de BuildTriangles().
         glBindVertexArray(vertex_array_object_id);
 
-        // Recuperamos o número de segundos que passou desde o último frame
         delta_t = (float)glfwGetTime() - old_seconds;
         #define CUBE 0
-        #define COW 1
-        #define BUNNY 2
-        #define PLANE  3
-        #define MADELINE  4
-        #define COLLISION  5
+        #define PLANE  1
+        #define COW 2
+        #define BUNNY 3
+        #define MADELINE 4
 
-        if (strawberry.status){
-            if (bezier && t<=1){
-                t+=delta_t;
-                BezierMovement(&strawberry, t, delta_t);
-            } else if (t>1)
-                t = 0;
-            glm::mat4 model;
-            model = Matrix_Identity();
-            model *= Matrix_Translate(strawberry.position.x, strawberry.position.y, strawberry.position.z);
-            model *= Matrix_Scale(strawberry.width*2, strawberry.height*2, strawberry.length*2);
-
-            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-            glUniform1i(render_as_red_uniform, false);
-
-            glUniform1i(render_as_red_uniform, CUBE);
-            glDrawElements(
-                g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
-                g_VirtualScene["cube_faces"].num_indices,
-                GL_UNSIGNED_INT,
-                (void*)g_VirtualScene["cube_faces"].first_index
-            );
-        }
-
+        DrawCubes();
+        DrawPlanes();
+        DrawMadeline(camera_view_vector);
+       
+        
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
         CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
-        // Computamos a matriz "View" utilizando os parâmetros da câmera para
-        // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
-
         // Salva número de segundos que passou para fazer o frame refresh
         old_seconds = (float)glfwGetTime();
-
-        // Agora computamos a matriz de Projeção.
-        glm::mat4 projection;
-
-        // Note que, no sistema de coordenadas da câmera, os planos near e far
-        // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
-        float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane = -20.0f; // Posição do "far plane"
-
-        if (g_UsePerspectiveProjection)
-        {
-            // Projeção Perspectiva.
-            // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
-            float field_of_view = M_PI / 3.0f;
-            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
-        }
-        else
-        {
-            // Projeção Ortográfica.
-            // Para definição dos valores l, r, b, t ("left", "right", "bottom", "top"),
-            // PARA PROJEÇÃO ORTOGRÁFICA veja slides 219-224 do documento Aula_09_Projecoes.pdf.
-            // Para simular um "zoom" ortográfico, computamos o valor de "t"
-            // utilizando a variável g_CameraDistance.
-            float t = 1.5f * g_CameraDistance / 2.5f;
-            float b = -t;
-            float r = t * g_ScreenRatio;
-            float l = -r;
-            projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
-        }
-
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
-
-        // Enviamos as matrizes "view" e "projection" para a placa de vídeo
-        // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
-        // efetivamente aplicadas em todos os pontos.
-        glUniformMatrix4fv(g_view_uniform, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
-
-        for (Box cube : cubes){
-            // Cada cópia do cubo possui uma matriz de modelagem independente,
-            // já que cada cópia estará em uma posição (rotação, escala, ...)
-            // diferente em relação ao espaço global (World Coordinates). Veja
-            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-
-            if (cube.status) {
-                model = Matrix_Identity();
-                model *= Matrix_Translate(cube.position.x, cube.position.y, cube.position.z);
-                model *= Matrix_Scale(cube.width*2, cube.height*2, cube.length*2);
-
-                // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
-                // arquivo "shader_vertex.glsl", onde esta é efetivamente
-                // aplicada em todos os pontos.
-                glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-                glUniform1i(render_as_red_uniform, false);
-
-                // Pedimos para a GPU rasterizar os vértices do cubo apontados pelo
-                // VAO como triângulos, formando as faces do cubo. Esta
-                // renderização irá executar o Vertex Shader definido no arquivo
-                // "shader_vertex.glsl", e o mesmo irá utilizar as matrizes
-                // "model", "view" e "projection" definidas acima e já enviadas
-                // para a placa de vídeo (GPU).
-                //
-                // Veja a definição de g_VirtualScene["cube_faces"] dentro da
-                // função BuildTriangles(), e veja a documentação da função
-                // glDrawElements() em http://docs.gl/gl3/glDrawElements.
-
-                glUniform1i(render_as_red_uniform, CUBE);
-                glDrawElements(
-                    g_VirtualScene["cube_faces"].rendering_mode, // Veja slides 182-188 do documento Aula_04_Modelagem_Geometrica_3D.pdf
-                    g_VirtualScene["cube_faces"].num_indices,
-                    GL_UNSIGNED_INT,
-                    (void*)g_VirtualScene["cube_faces"].first_index
-                );
-            }
-        }
-
-        for (Box plane : planes){
-            // Cada cópia do cubo possui uma matriz de modelagem independente,
-            // já que cada cópia estará em uma posição (rotação, escala, ...)
-            // diferente em relação ao espaço global (World Coordinates). Veja
-            // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-
-            if (plane.status) {
-                glm::vec4 normal = glm::vec4 (0.0, 1.0, 0.0, 0.0);
-                float theta = 0;
-                float phi = 0;
-
-                glm::vec4 w = plane.direction;
-                w.z = 0;
-                if (norm(w)!=0) {
-                    w = normalize(w);
-                    float cos_theta = dotproduct(w, normal)/(norm(w)*norm(normal));
-                    theta = acos(cos_theta);
-                }
-
-                glm::vec4 u = plane.direction;
-                u.x = 0;
-                if (norm(u)!=0) {
-                    u = normalize(u);
-                    float cos_phi = dotproduct(u, normal)/(norm(u)*norm(normal));
-                    phi = acos(cos_phi);
-                }
-
-                model = Matrix_Translate(plane.position.x,plane.position.y,plane.position.z)
-                  *  Matrix_Scale(plane.width, plane.height, plane.length)
-                  *  Matrix_Rotate_X(phi)
-                  *  Matrix_Rotate_Z(theta);
-                glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(g_object_id_uniform, PLANE);
-                DrawVirtualObject("the_plane");
-            }
-        }
-        // Desenhamos o modelo da vaca
-        model = Matrix_Translate(0.0f, 4.0f, 0.0f)
-            * Matrix_Rotate_Z(0.6f)
-            * Matrix_Rotate_X(0.2f)
-            * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, COW);
-        DrawVirtualObject("the_cow");
-
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f, 4.0f, 0.0f) *
-            Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f) *
-            Matrix_Scale(0.5f,0.5f,0.5f);
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, BUNNY);
-        DrawVirtualObject("the_bunny");
-
-        if (look_at){
-            glm::vec4 w = (camera_view_vector);
-            w.y = 0;
-            w = normalize(w);
-            glm::vec4 normal = glm::vec4 (0.0, 0.0, 1.0, 0.0);
-
-            float cos_theta = dotproduct(w, normal)/(norm(w)*norm(normal));
-            float theta = acos(cos_theta);
-            if (w.x < 0)
-                theta = - acos(cos_theta);
-
-            model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z)*
-                Matrix_Rotate_Y(theta) *
-                Matrix_Translate(0.22, -0.5, 0.15)*
-                Matrix_Scale(0.005f, 0.005f, 0.005f);
-            glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-            glUniform1i(g_object_id_uniform, MADELINE);
-            DrawVirtualObject("madeline");
-        }
-
+        
+        CameraProjection(camera_position_c, camera_view_vector, camera_up_vector);
+        
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
         glfwSwapBuffers(window);
@@ -614,7 +435,105 @@ int main()
     glfwTerminate();
 
     return 0;
-    return 0;
+}
+
+void DrawCubes() {
+    for (Box cube : cubes) {
+
+        glm::mat4 model = Matrix_Identity();
+
+        if (cube.status) {
+            model = Matrix_Identity()
+                * Matrix_Translate(cube.position.x, cube.position.y, cube.position.z)
+                * Matrix_Scale(cube.width, cube.height, cube.length);
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, CUBE);
+            DrawVirtualObject("the_cube");
+        }
+    }
+}
+
+void DrawPlanes() {
+    for (Box plane : planes) {
+        glm::mat4 model = Matrix_Identity();
+
+        if (plane.status) {
+            glm::vec4 normal = glm::vec4(0.0, 1.0, 0.0, 0.0);
+            float theta = 0;
+            float phi = 0;
+
+            glm::vec4 w = plane.direction;
+            w.z = 0;
+            if (norm(w) != 0) {
+                w = normalize(w);
+                float cos_theta = dotproduct(w, normal) / (norm(w) * norm(normal));
+                theta = acos(cos_theta);
+            }
+
+            glm::vec4 u = plane.direction;
+            u.x = 0;
+            if (norm(u) != 0) {
+                u = normalize(u);
+                float cos_phi = dotproduct(u, normal) / (norm(u) * norm(normal));
+                phi = acos(cos_phi);
+            }
+
+            model = Matrix_Translate(plane.position.x, plane.position.y, plane.position.z)
+                * Matrix_Scale(plane.width, plane.height, plane.length)
+                * Matrix_Rotate_X(phi)
+                * Matrix_Rotate_Z(theta);
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, PLANE);
+            DrawVirtualObject("the_plane");
+        }
+    }
+}
+
+void DrawMadeline(glm::vec4 camera_view_vector) {
+    if (look_at) {
+        glm::mat4 model = Matrix_Identity();
+        glm::vec4 w = (camera_view_vector);
+        w.y = 0;
+        w = normalize(w);
+        glm::vec4 normal = glm::vec4(0.0, 0.0, 1.0, 0.0);
+
+        float cos_theta = dotproduct(w, normal) / (norm(w) * norm(normal));
+        float theta = acos(cos_theta);
+        if (w.x < 0)
+            theta = -acos(cos_theta);
+
+        model = Matrix_Translate(Madeline.position.x, Madeline.position.y, Madeline.position.z) *
+            Matrix_Rotate_Y(theta) *
+            Matrix_Translate(0.22, -0.5, 0.15) *
+            Matrix_Scale(0.005f, 0.005f, 0.005f);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, MADELINE);
+        DrawVirtualObject("madeline");
+    }
+
+}
+
+void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector, glm::vec4 camera_up_vector) {
+    glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+    glm::mat4 projection;
+    float nearplane = -0.1f;
+    float farplane = -40.0f;
+
+    if (g_UsePerspectiveProjection)
+    {
+        float field_of_view = M_PI / 3.0f;
+        projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+    }
+    else
+    {
+        float t = 1.5f * g_CameraDistance / 2.5f;
+        float b = -t;
+        float r = t * g_ScreenRatio;
+        float l = -r;
+        projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
+    }
+    glUniformMatrix4fv(g_view_uniform, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 }
 
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
@@ -768,7 +687,7 @@ void BezierMovement(Box* strawberry, float t, float delta_t){
     strawberry->position = ct;
     strawberry->position.y = y;
 }
-// Função que carrega uma imagem para ser utilizada como textura
+
 void LoadTextureImage(const char* filename)
 {
     printf("Carregando imagem \"%s\"... ", filename);
