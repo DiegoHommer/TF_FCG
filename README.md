@@ -27,8 +27,16 @@ Thomas Schneider Wiederkehr - 00342606
 ## Desenvolvimento e aplicação de conceitos
 
 ## Imagens
+![image](https://github.com/user-attachments/assets/a4949d8a-8f88-4a83-ba6d-92eb1678a427)
+![image](https://github.com/user-attachments/assets/037f8af6-e994-40d9-93b1-c4ae791c533a)
+
+
 
 ## Manual
+### Objetivos:
+- Alcançar modelo do Coelho (1º Fase) ou Vaca (2º Fase) para concluir a fase
+- Tentar coletar o maior número de morangos possível (opcional)
+- PS: Morangos fogem em espiral para cima quando player realiza seu primeiro Dash
 ### Mapeamento de teclas:
 - SPACEBAR == Pulo do player character
 - C == Dash do player character (boost de velocidade na direção para onde o jogador está caminhando)
