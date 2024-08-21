@@ -40,7 +40,7 @@ Thomas Schneider Wiederkehr - 00342606
     
   - **Bézier**: Foi implementada uma curva de bézier de grau 4 (5 pontos) que procura simular uma curva circular para o morango, isto é, o primeiro e o quinto ponto são o mesmo. Além da curva, o valor de y do objeto do morango é somado a cada interação para que ele suba.
 
-  As funcionalidades do jogo que não estavam listadas na especificação do trabalho tiveram que ser projetadas e implementadas de forma propria. Um exemplo disto foi o mapeamento das fases, onde criamos uma forma "automatizada" de desenhar os objetos na tela com base em listas de Boxes. Também implementados os movimento de pulo, que basicamente inverte a gravidade do personagem e então decresce a mesma gradativamente, e o *dash*, onde o personagem se move rapidamente em uma direção travada. 
+  As funcionalidades do jogo que não estavam listadas na especificação do trabalho tiveram que ser projetadas e implementadas de forma propria. Um exemplo disto foi o mapeamento das fases, onde criamos uma forma "automatizada" de desenhar os objetos na tela com base em listas de Boxes. Também implementamos os movimento de pulo, que basicamente inverte a gravidade do personagem e então decresce a mesma gradativamente, e o *dash*, onde o personagem se move rapidamente em uma direção travada. 
   
 ## Imagens
 ![image](https://github.com/user-attachments/assets/bddbd83c-10f5-4941-aec1-0a57e6092136)
