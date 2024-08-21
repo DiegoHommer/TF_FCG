@@ -12,6 +12,7 @@ struct Character
     float       gravity = -4.0;
     int         jump_counter = 0;
     float       velocity = 3.0;
+    int         strawberry_count = 0;
 };
 
 struct Box

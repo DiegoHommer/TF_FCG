@@ -141,10 +141,8 @@ void TextRendering_PrintMatrixVectorProductDivW(GLFWwindow* window, glm::mat4 M,
 
 // Funções abaixo renderizam como texto na janela OpenGL algumas matrizes e
 // outras informações do programa. Definidas após main().
-void TextRendering_ShowModelViewProjection(GLFWwindow* window, glm::mat4 projection, glm::mat4 view, glm::mat4 model, glm::vec4 p_model);
-void TextRendering_ShowEulerAngles(GLFWwindow* window);
-void TextRendering_ShowProjection(GLFWwindow* window);
 void TextRendering_ShowFramesPerSecond(GLFWwindow* window);
+void TextRendering_ShowStrawberries(GLFWwindow* window);
 
 // Funções callback para comunicação com o sistema operacional e interação do
 // usuário. Veja mais comentários nas definições das mesmas, abaixo.
@@ -160,6 +158,7 @@ void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector,
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t);
 void BezierMovement(Box* strawberry, float t, float delta_t);
+void CountStrawberries();
 void LoadTextures();
 void DrawCubes();
 void DrawPlanes();
@@ -232,7 +231,7 @@ GLint g_bbox_max_uniform;
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
-// Variáveis que definem as possibilidades de movimento da câmera livre
+// Variáveis que definem as possibilidades de movimento do personagem
 bool front = false;
 bool back = false;
 bool left = false;
@@ -242,18 +241,20 @@ bool bezier = false;
 float t = 0.0;
 int level = 1;
 
+// Ponto de origem para marcar o retorno do personagem
 glm::vec4 origin = glm::vec4(0.0f, 4.0f, 0.0f, 1.0f);
 
 Character Madeline;
 
-// Variável para alternar entre câmera livre e câmera look_at
+// Variáveis para alternar entre câmera livre e câmera look_at
 bool look_at = false;
 bool switch_camera_type = false;
+
+//variavel que atualiza a posição do morango de acordo com a fase
 glm::vec4 strawberry_base = strawberries[level-1].position;
 
 int main()
 {
-
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -270,9 +271,9 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-#ifdef __APPLE__
+    #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    #endif
 
     // Pedimos para utilizar o perfil "core", isto é, utilizaremos somente as
     // funções modernas de OpenGL.
@@ -354,7 +355,6 @@ int main()
     // Construímos a representação de um triângulo
     GLuint vertex_array_object_id = BuildTriangles();
 
-
     // Inicializamos o código para renderização de texto.
     TextRendering_Init();
 
@@ -375,11 +375,13 @@ int main()
     glm::mat4 the_model;
     glm::mat4 the_view;
 
+    //Iniciamos as cameras
     glm::vec4 camera_position_c = origin; // Ponto "c", centro da câmera inicializado em um ponto definido
     Madeline.position = origin; // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
+    // Caixa de colisão do personagem
     Box madeline_collision (Madeline.position, glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), 0.5, 0.25, 0.25, 0);
 
     // Variáveis para calcular delta_t inicializadas
@@ -393,6 +395,7 @@ int main()
         glUseProgram(g_GpuProgramID);
         glBindVertexArray(vertex_array_object_id);
 
+        // Calculo do intervalo de tempo
         delta_t = (float)glfwGetTime() - old_seconds;
         #define CUBE 0
         #define PLANE  1
@@ -401,6 +404,7 @@ int main()
         #define MADELINE 4
         #define WINGED_BERRY 5
 
+        //Chama funções auxiliares para desenhar os objetos
         DrawCubes();
         DrawPlanes();
         DrawMadeline(camera_view_vector);
@@ -408,7 +412,10 @@ int main()
         DrawCow();
         DrawStrawberry(delta_t);
 
+        //Atualiza os valores da camera
         CameraMovement(look_at, &Madeline, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
+
+        //Atualiza a posição do personagem
         CharacterMovement(look_at, &Madeline, &madeline_collision, &camera_position_c, &camera_view_vector, camera_up_vector, delta_t);
 
         // Salva número de segundos que passou para fazer o frame refresh
@@ -416,8 +423,12 @@ int main()
 
         CameraProjection(camera_position_c, camera_view_vector, camera_up_vector);
 
+        //Conta o número de morangos coletados
+        CountStrawberries();
+
         glBindVertexArray(0);
         TextRendering_ShowFramesPerSecond(window);
+        TextRendering_ShowStrawberries(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -427,12 +438,15 @@ int main()
     return 0;
 }
 
+//Desenha o vetor de cubos
 void DrawCubes() {
     for (Box cube : cubes) {
 
         glm::mat4 model = Matrix_Identity();
 
         if (cube.status && cube.level == level) {
+
+            // Atualiza o cubo de acordo com os valores da colisão
             model = Matrix_Identity()
                 * Matrix_Translate(cube.position.x, cube.position.y, cube.position.z)
                 * Matrix_Scale(cube.width, cube.height, cube.length);
@@ -443,11 +457,14 @@ void DrawCubes() {
     }
 }
 
+//Desenha o vetor de planos
 void DrawPlanes() {
     for (Box plane : planes) {
         glm::mat4 model = Matrix_Identity();
 
         if (plane.status) {
+
+            // Calculo da rotação do plano
             glm::vec4 normal = glm::vec4(0.0, 1.0, 0.0, 0.0);
             float theta = 0;
             float phi = 0;
@@ -468,6 +485,7 @@ void DrawPlanes() {
                 phi = acos(cos_phi);
             }
 
+            // Atualiza o plano de acordo com os valores da colisão
             model = Matrix_Translate(plane.position.x, plane.position.y, plane.position.z)
                 * Matrix_Scale(plane.width, plane.height, plane.length)
                 * Matrix_Rotate_X(phi)
@@ -479,6 +497,8 @@ void DrawPlanes() {
     }
 }
 
+
+//Desenha o personagem
 void DrawMadeline(glm::vec4 camera_view_vector) {
     if (look_at) {
         glm::mat4 model = Matrix_Identity();
@@ -503,6 +523,7 @@ void DrawMadeline(glm::vec4 camera_view_vector) {
 
 }
 
+//Desenha o Coelho
 void DrawBunny(){
     if (bunny.status && level == 1){
         glm::mat4 model = Matrix_Identity();
@@ -514,6 +535,7 @@ void DrawBunny(){
     }
 }
 
+//Desenha a Vaca
 void DrawCow(){
     if (cow.status && level == 2){
         glm::mat4 model = Matrix_Identity();
@@ -524,6 +546,7 @@ void DrawCow(){
     }
 }
 
+//Desenha o Morango
 void DrawStrawberry(float delta_t){
     if (strawberries[level-1].status) {
         if (bezier && t<=1){
@@ -538,6 +561,16 @@ void DrawStrawberry(float delta_t){
         glUniform1i(g_object_id_uniform, WINGED_BERRY);
         DrawVirtualObject("the_winged_strawberry");
     }
+}
+
+//Conta o numero de morangos coletados ao longo das fases
+void CountStrawberries() {
+    Madeline.strawberry_count = 0;
+    for (int i=0; i<=level-1; i++){
+        if (!strawberries[i].status)
+            Madeline.strawberry_count ++;
+    }
+
 }
 
 void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector, glm::vec4 camera_up_vector) {
@@ -563,6 +596,7 @@ void CameraProjection(glm::vec4 camera_position_c, glm::vec4 camera_view_vector,
     glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 }
 
+//Atualiza os valores da camera / realiza a troca entre free e look-at
 void CameraMovement(bool look_at, Character* character, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
 
     // Atualizamos os vetores da câmera quando seu tipo muda
@@ -601,10 +635,12 @@ void CameraMovement(bool look_at, Character* character, glm::vec4* camera_positi
 
 }
 
+//Calcula a proxima posição do personagem
 void CharacterMovement(bool look_at, Character* character, Box* character_collision, glm::vec4* camera_position_c, glm::vec4* camera_view_vector, glm::vec4 camera_up_vector, float delta_t) {
 
     character->direction = glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f);
 
+    //Verifica a direção do movimento
     if (front) {
         glm::vec4 w = (*camera_view_vector);
         w.y = 0;
@@ -633,16 +669,19 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
         character->direction += u;
     }
 
+    //Inicia os valores do dash
     if (dash){
         character->dash_timer = 4;
         character->gravity = 0;
         character->velocity = 15;
         character->direction_dash = character->direction;
         character->direction_dash.y = 0;
+        //Se personagem não estiver se movendo, dasha para frente
         if (character->direction_dash == glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f))
             character->direction_dash = (*camera_view_vector)/norm(*camera_view_vector);
         dash = false;
     }
+    //Atualiza o timer do dash e calcula a posição
     else if (character->dash_timer >= 0) {
         character->dash_timer -= 12 * delta_t;
         character->direction = character->direction_dash;
@@ -656,36 +695,44 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
 
     character_collision->position = character->position;
 
+    //normaliza a direção
     if (character->direction != glm::vec4 (0.0f, 0.0f, 0.0f, 0.0f))
         character->direction = normalize(character->direction);
+
     character->direction = character->direction * character->velocity * delta_t;
     character->direction.y = character->gravity  * delta_t;
 
+    //Se personagem caiu do mapa
     if (character->position.y <= -5.0){
         character->position = origin;
+        //Reposiciona o morango
         bezier = false;
         strawberries[level-1].position = strawberry_base;
         strawberries[level-1].status = true;
         t = 0;
     }
+
+    //Se personagem chocou com o coelho passa para a proxima fase
     if (CubeCubeCollision(*character_collision, bunny, character->direction) != character->direction){
         character->position = origin;
         level++;
         bezier = false;
         strawberry_base = strawberries[level-1].position;
         strawberries[level-1].position = strawberry_base;
-        strawberries[level-1].status = true;
         t = 0;
     }
 
+    //Checa colisões com os planos
     for (Box plane : planes)
         character->direction = CubePlaneCollision(*character_collision, character->direction, plane);
 
+    //Checa colisões com os cubos
     for (Box cube : cubes){
         if (cube.level == level)
             character->direction = CubeCubeCollision(*character_collision, cube, character->direction);
     }
 
+    //Checa colisão com morango
     if (CubeCubeCollision(*character_collision, strawberries[level-1], character->direction) != character->direction)
         strawberries[level-1].status = false;
 
@@ -698,11 +745,9 @@ void CharacterMovement(bool look_at, Character* character, Box* character_collis
         }
         character->gravity = 0.0;
     }
-
-    if (!look_at){
-    }
 }
 
+// Realiza movimento em bézier do morango
 void BezierMovement(Box* strawberry, float t, float delta_t){
     glm::vec4 p[5];
     glm::vec4 c[4];
@@ -1604,96 +1649,7 @@ void ErrorCallback(int error, const char* description)
 // mesmo por todos os sistemas de coordenadas armazenados nas matrizes model,
 // view, e projection; e escreve na tela as matrizes e pontos resultantes
 // dessas transformações.
-void TextRendering_ShowModelViewProjection(
-    GLFWwindow* window,
-    glm::mat4 projection,
-    glm::mat4 view,
-    glm::mat4 model,
-    glm::vec4 p_model
-)
-{
-    if (!g_ShowInfoText)
-        return;
 
-    glm::vec4 p_world = model * p_model;
-    glm::vec4 p_camera = view * p_world;
-    glm::vec4 p_clip = projection * p_camera;
-    glm::vec4 p_ndc = p_clip / p_clip.w;
-
-    float pad = TextRendering_LineHeight(window);
-
-    TextRendering_PrintString(window, " Model matrix             Model     In World Coords.", -1.0f, 1.0f - pad, 1.0f);
-    TextRendering_PrintMatrixVectorProduct(window, model, p_model, -1.0f, 1.0f - 2 * pad, 1.0f);
-
-    TextRendering_PrintString(window, "                                        |  ", -1.0f, 1.0f - 6 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            .-----------'  ", -1.0f, 1.0f - 7 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            V              ", -1.0f, 1.0f - 8 * pad, 1.0f);
-
-    TextRendering_PrintString(window, " View matrix              World     In Camera Coords.", -1.0f, 1.0f - 9 * pad, 1.0f);
-    TextRendering_PrintMatrixVectorProduct(window, view, p_world, -1.0f, 1.0f - 10 * pad, 1.0f);
-
-    TextRendering_PrintString(window, "                                        |  ", -1.0f, 1.0f - 14 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            .-----------'  ", -1.0f, 1.0f - 15 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            V              ", -1.0f, 1.0f - 16 * pad, 1.0f);
-
-    TextRendering_PrintString(window, " Projection matrix        Camera                    In NDC", -1.0f, 1.0f - 17 * pad, 1.0f);
-    TextRendering_PrintMatrixVectorProductDivW(window, projection, p_camera, -1.0f, 1.0f - 18 * pad, 1.0f);
-
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
-    glm::vec2 a = glm::vec2(-1, -1);
-    glm::vec2 b = glm::vec2(+1, +1);
-    glm::vec2 p = glm::vec2(0, 0);
-    glm::vec2 q = glm::vec2(width, height);
-
-    glm::mat4 viewport_mapping = Matrix(
-        (q.x - p.x) / (b.x - a.x), 0.0f, 0.0f, (b.x * p.x - a.x * q.x) / (b.x - a.x),
-        0.0f, (q.y - p.y) / (b.y - a.y), 0.0f, (b.y * p.y - a.y * q.y) / (b.y - a.y),
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    );
-
-    TextRendering_PrintString(window, "                                                       |  ", -1.0f, 1.0f - 22 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            .--------------------------'  ", -1.0f, 1.0f - 23 * pad, 1.0f);
-    TextRendering_PrintString(window, "                            V                           ", -1.0f, 1.0f - 24 * pad, 1.0f);
-
-    TextRendering_PrintString(window, " Viewport matrix           NDC      In Pixel Coords.", -1.0f, 1.0f - 25 * pad, 1.0f);
-    TextRendering_PrintMatrixVectorProductMoreDigits(window, viewport_mapping, p_ndc, -1.0f, 1.0f - 26 * pad, 1.0f);
-}
-
-// Escrevemos na tela os ângulos de Euler definidos nas variáveis globais
-// g_AngleX, g_AngleY, e g_AngleZ.
-void TextRendering_ShowEulerAngles(GLFWwindow* window)
-{
-    if (!g_ShowInfoText)
-        return;
-
-    float pad = TextRendering_LineHeight(window);
-
-    char buffer[80];
-    snprintf(buffer, 80, "Euler Angles rotation matrix = Z(%.2f)*Y(%.2f)*X(%.2f)\n", g_AngleZ, g_AngleY, g_AngleX);
-
-    TextRendering_PrintString(window, buffer, -1.0f + pad / 10, -1.0f + 2 * pad / 10, 1.0f);
-}
-
-// Escrevemos na tela qual matriz de projeção está sendo utilizada.
-void TextRendering_ShowProjection(GLFWwindow* window)
-{
-    if (!g_ShowInfoText)
-        return;
-
-    float lineheight = TextRendering_LineHeight(window);
-    float charwidth = TextRendering_CharWidth(window);
-
-    if (g_UsePerspectiveProjection)
-        TextRendering_PrintString(window, "Perspective", 1.0f - 13 * charwidth, -1.0f + 2 * lineheight / 10, 1.0f);
-    else
-        TextRendering_PrintString(window, "Orthographic", 1.0f - 13 * charwidth, -1.0f + 2 * lineheight / 10, 1.0f);
-}
-
-// Escrevemos na tela o número de quadros renderizados por segundo (frames per
-// second).
 void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
 {
     if (!g_ShowInfoText)
@@ -1726,6 +1682,16 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
     float charwidth = TextRendering_CharWidth(window);
 
     TextRendering_PrintString(window, buffer, 1.0f - (numchars + 1) * charwidth, 1.0f - lineheight, 1.0f);
+}
+
+void TextRendering_ShowStrawberries(GLFWwindow* window){
+    if (!g_ShowInfoText)
+        return;
+    float lineheight = TextRendering_LineHeight(window);
+    float charwidth = TextRendering_CharWidth(window);
+    std::string buffer = "Strawberries: " + std::to_string(Madeline.strawberry_count);
+
+    TextRendering_PrintString(window, buffer, -0.95f, 1.0f - lineheight, 1.0f);
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
