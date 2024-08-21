@@ -31,15 +31,26 @@ Thomas Schneider Wiederkehr - 00342606
    
  - **Instâncias**: para criar as fases reutilizamos os objetos do laboratório 5 (plano, vaca e coelho) e trouxemos um .obj de cubo (que foi remodelado de diversas formas) assim como objetos para o personagem e o morango voador. Os objetos novos tiveram suas texturas extraída por meio do software *blender* de modelagem 3D.
    
- - **Colisões**: definimos 3 tipos diferentes de colisões: *ponto-plano*, *cubo-plano* e *cubo-cubo*. Todas as entidades que colidem possuem um objeto da classe **Box**, que serve como uma *bounding box* para os testes. Estas *boxes* são cubos alinhados aos eixos, ou seja, não sofrem rotação apenas translação. A colisão ponto-plano foi implementada baseado na formula de intersecção de segmento-plano apresentada na aula, com restrições de altura y, largura x e profundidade z para limitar o plano. Esta colisão é chamada durante a colisão cubo-plano, onde, para cada par de pontos do cubo, é checado se ocorre uma colisão 
+ - **Colisões**: todas as entidades que colidem possuem um objeto da classe **Box**, que serve como uma *bounding box* para os testes. Estas *boxes* são cubos alinhados aos eixos, ou seja, não sofrem rotação apenas translação. Os testes de colisão recebem a Box do personagem e a direção que pretende se mover, verificando se a posição do personagem após esse movimento é valida ou não. Definimos 3 tipos diferentes de colisões:
+   - Ponto-plano: esta colisão foi implementada baseado na formula de intersecção de segmento com plano apresentada na aula, com restrições de altura y, largura x e profundidade z para limitar o plano. Esta função é chamada durante a colisão cubo-plano onde, para cada par de pontos do cubo, é checado se ocorre uma colisão com o plano em questão.
+   - Cubo-plano: recebe a direção em que o cubo do personagem pretende se mover e devolve a direção em que ele de fato poderá de deslocar, realizando o teste de colisão para o vetor de direção projetado em cada eixo (direção x, direção y e direção z isoladamente).
+   - Cubo-cubo: esta colisão foi implementada de outra forma. Basicamente, verifica-se se um ponto de um cubo se encontra entre 2 pontos de outro cubo em um dos eixos (z, por exemplo). Ao encontrar este ponto, marca-se z como encontrado e realiza-se o mesmo processo com os outros eixos x e y. Se forem encontrados 3 pontos, de qualquer um dos 2 cubos, que contemplam a regra para os 3 eixos, e que podem ser iguais, ocorre a colisão e o movimento é impedido naquela direção. Esta função também verifica a direção de cada eixo separadamente.
+
+  - **Iluminação**:
+    
+  - **Bézier**: Foi implementada uma curva de bézier de grau 4 (5 pontos) que procura simular uma curva circular para o morango, isto é, o primeiro e o quinto ponto são o mesmo. Além da curva, o valor de y do objeto do morango é somado a cada interação para que ele suba.
+
+  As funcionalidades do jogo que não estavam listadas na especificação do trabalho tiveram que ser projetadas e implementadas de forma propria. Um exemplo disto foi o mapeamento das fases, onde criamos uma forma "automatizada" de desenhar os objetos na tela com base em listas de Boxes. Também implementados os movimento de pulo, que basicamente inverte a gravidade do personagem e então decresce a mesma gradativamente, e o *dash*, onde o personagem se move rapidamente em uma direção travada. 
   
 ## Imagens
 ![image](https://github.com/user-attachments/assets/bddbd83c-10f5-4941-aec1-0a57e6092136)
+Coelho iluminado com Blinn-Phong
+
 ![image](https://github.com/user-attachments/assets/037f8af6-e994-40d9-93b1-c4ae791c533a)
+Level 1 (terceira pessoa)
+
 ![image](https://github.com/user-attachments/assets/6e116352-bb7a-435b-8075-064efc6cc30d)
-
-
-
+Level 2
 
 ## Manual
 ### Objetivos:
@@ -47,6 +58,7 @@ Thomas Schneider Wiederkehr - 00342606
 - Tentar coletar o maior número de morangos possível (opcional)
 - PS: Morangos fogem em espiral para cima quando player realiza seu primeiro Dash
 ### Mapeamento de teclas:
+- W, A, S, D == Move o personagem nas 4 direções
 - SPACEBAR == Pulo do player character
 - C == Dash do player character (boost de velocidade na direção para onde o jogador está caminhando)
 - L == Troca entre câmera look-at (third-person) e livre (first-person)
