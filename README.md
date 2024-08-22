@@ -71,9 +71,18 @@ Level 2
 - Tentar coletar o maior número de morangos possível (opcional)
 - PS: Morangos fogem em espiral para cima quando player realiza seu primeiro Dash
 ### Mapeamento de teclas:
+- MOUSE == Move a direção da câmera
 - W, A, S, D == Move o personagem nas 4 direções
 - SPACEBAR == Pulo do player character
 - C == Dash do player character (boost de velocidade na direção para onde o jogador está caminhando)
 - L == Troca entre câmera look-at (third-person) e livre (first-person)
 - P == Troca para projeção perspectiva
 - O == Troca para projeção ortogonal
+
+## Como Rodar
+
+O zip possui um arquivo main.exe na pasta /bin/Debug, bastando abrir este arquivo para rodar o jogo. 
+
+![image](https://github.com/user-attachments/assets/95b25c7a-d7ce-4b8f-9e29-63b0e8daa296)
+
+Se quiser compilar o jogo em seu pc, é necessário copiar os arquivos presentes neste repositório para uma cópia do Laboratório 5 (substituindo os arquivos) e então compilar o código com alguma IDE.
