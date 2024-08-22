@@ -37,6 +37,19 @@ Thomas Schneider Wiederkehr - 00342606
    - Cubo-cubo: esta colisão foi implementada de outra forma. Basicamente, verifica-se se um ponto de um cubo se encontra entre 2 pontos de outro cubo em um dos eixos (z, por exemplo). Ao encontrar este ponto, marca-se z como encontrado e realiza-se o mesmo processo com os outros eixos x e y. Se forem encontrados 3 pontos, de qualquer um dos 2 cubos, que contemplam a regra para os 3 eixos, e que podem ser iguais, ocorre a colisão e o movimento é impedido naquela direção. Esta função também verifica a direção de cada eixo separadamente.
 
   - **Iluminação**:
+    - Modelo de Iluminação de Lambert:
+      Implementado com a fórmula utilizada no laboratório 4 vista em aula. Aplicado para computar a iluminação dos modelos da Madeline (madeline.obj), do cubo (cube.obj) e do morango (winged_strawberry.obj).
+      ![image](https://github.com/user-attachments/assets/c0e51db3-204f-4095-a232-d8c65e48e213)
+    - Modelo de Iluminação de Blinn-Phong:
+      Implementado com a fórmula utilizada no laboratório 4 vista em aula (como implementamos o Phong no Lab, apenas foi necessário atualizar o termo especular para utilizar os vetores 𝑛 (normal) e ℎ (half-vector)). Aplicado para computar a iluminação dos modelos do coelho (bunny.obj) e do plano (plane.obj).
+      ![image](https://github.com/user-attachments/assets/8240c9d9-4a5f-4664-ba84-04eda737a2b6)
+
+
+    - Modelo de Interpolação de Gouraud:
+      Implementado calculando os atributos de cor e o mapeamento de textura no shader_vertex (ou seja, para cada vértice) e repassando esse valor (denominado gouraud_color) para o shader_fragment como input para ser definido como o valor de color.rgb. Foi utilizado na iluminação do modelo da vaca (cow.obj). 
+    - Modelo de Interpolação de Phong
+      Implementado calculando os atributos de cor e o mapeamento de textura diretamente no shader_fragment. Ocorre quando o valor de gouraud_color vindo do shader_vertex é igual a (0.0,0.0,0.0). Utilizado em todos os demais modelos (madeline.obj, bunny.obj,...).
+    
     
   - **Bézier**: Foi implementada uma curva de bézier de grau 4 (5 pontos) que procura simular uma curva circular para o morango, isto é, o primeiro e o quinto ponto são o mesmo. Além da curva, o valor de y do objeto do morango é somado a cada interação para que ele suba.
 
