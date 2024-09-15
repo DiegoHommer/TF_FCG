@@ -1,12 +1,5 @@
 # Ignore folders
 /bin/
-/include/
-/lib-linux/
-/lib-mingw-32/
-/lib-mingw-64/
-/lib-ucrt-64/
-/lib-vc2022/
-/out/
 /.vs/
 /.vscode/
 /obj/
@@ -15,8 +8,4 @@
 /Laboratorio_5.cbp
 /Laboratorio_5.layout
 /Laboratorio_5.depend
-/CMakeLists.txt
 /LEIAME.txt
-/Makefile
-/Makefile.macOS
-/CMakePresets.json

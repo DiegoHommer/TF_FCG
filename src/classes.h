@@ -11,7 +11,7 @@ struct Character
     int         dash_counter = 1;
     float       gravity = -4.0;
     int         jump_counter = 0;
-    float       velocity = 3.0;
+    float       velocity = 1.0;
     int         strawberry_count = 0;
 };
 
